@@ -1,0 +1,93 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r39 - in trunk: . src/opentask/dialogs
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-August/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r39%20-%20in%20trunk%3A%20.%20src/opentask/dialogs&In-Reply-To=%3C200808011259.m71Cxepi008554%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r39 - in trunk: . src/opentask/dialogs</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r39%20-%20in%20trunk%3A%20.%20src/opentask/dialogs&In-Reply-To=%3C200808011259.m71Cxepi008554%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r39 - in trunk: . src/opentask/dialogs">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Fri Aug  1 14:59:40 CEST 2008</I>
+    <P><UL>
+        
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-08-01 14:59:40 +0200 (Fri, 01 Aug 2008)
+New Revision: 39
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/dialogs/NotifyDialog.java
+Log:
+notify dialog gets window manager order onTop on popup
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-08 13:49:46 UTC (rev 38)
++++ trunk/changelog.txt	2008-08-01 12:59:40 UTC (rev 39)
+@@ -1,6 +1,7 @@
+ 0.1.5
+ =====
+ * added about dialog
++* notify dialog gets window manager order onTop on popup 
+ 
+ 0.1.4
+ =====
+
+Modified: trunk/src/opentask/dialogs/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/dialogs/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
++++ trunk/src/opentask/dialogs/NotifyDialog.java	2008-08-01 12:59:40 UTC (rev 39)
+@@ -78,6 +78,7 @@
+ 		add(pane);
+ 		
+ 		pack();
++		toFront();
+ 	}
+ 	
+ 	/* (non-Javadoc)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,340 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r29 - in trunk: . src/opentask
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r29%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200802011823.m11INKQG021328%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000003.html">
+   <LINK REL="Next"  HREF="000005.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r29 - in trunk: . src/opentask</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r29%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200802011823.m11INKQG021328%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r29 - in trunk: . src/opentask">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb  1 19:23:20 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000003.html">[Opentask-devel] r28 - in trunk/src/opentask: . data
+</A></li>
+        <LI>Next message: <A HREF="000005.html">[Opentask-devel] r30 - in trunk: . src/opentask
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4">[ date ]</a>
+              <a href="thread.html#4">[ thread ]</a>
+              <a href="subject.html#4">[ subject ]</a>
+              <a href="author.html#4">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-01 19:23:20 +0100 (Fri, 01 Feb 2008)
+New Revision: 29
+
+Added:
+   trunk/src/opentask/Settings.java
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/Environment.java
+   trunk/src/opentask/OpenTask.java
+Log:
+implemented settings saving and loading capability
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/changelog.txt	2008-02-01 18:23:20 UTC (rev 29)
+@@ -2,6 +2,7 @@
+ =====
+ * implemented table column width calculation
+ * added periodically autosave function
++* implemented settings saving and loading capability
+ * fixed bug in notification / deletion of elapsed but un-notified tasks
+ * fixed bug in sorting order
+ 
+
+Modified: trunk/src/opentask/Environment.java
+===================================================================
+--- trunk/src/opentask/Environment.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/Environment.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -12,9 +12,15 @@
+ 	private static String fileSeparator = System.getProperty(&quot;file.separator&quot;);
+ 	
+ 	private static String dataFile = &quot;opentask.dat&quot;;
++	private static String settingsFile = &quot;opentask.ini&quot;;
+ 	
+ 	public static String getDataFile()
+ 	{
+ 		return dataPath + fileSeparator + dataFile;
+ 	}
++	
++	public static String getSettingsFile()
++	{
++		return dataPath + fileSeparator + settingsFile;
++	}
+ }
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/OpenTask.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -37,12 +37,14 @@
+ public class OpenTask implements ActionListener{
+ 
+ 	// important GUI elements
++	static JFrame mainWindow;
+ 	public JPanel mainPanel;
+ 	JMenuBar menuBar;
+ 	JTable table;
+ 	Timer notifyTimer, autoRepeatTimer;
+ 	
+ 	// important Data 
++	private Settings settings;
+ 	private boolean dirty;
+ 	private ItemList itemList;
+ 	private ItemListModel model;
+@@ -55,6 +57,8 @@
+ 	 * 
+ 	 */
+ 	public OpenTask() {
++		settings = new Settings();
++		
+ 		model = new ItemListModel();
+ 		itemList = new ItemList(model);	
+ 		if (!itemList.load())
+@@ -89,6 +93,15 @@
+ 	/**
+ 	 * 
+ 	 */
++	public void saveSettings() {
++		settings.setPosition(mainWindow.getX(), mainWindow.getY());
++		settings.setSize(mainWindow.getWidth(), mainWindow.getHeight());
++		settings.save();
++	}
++
++	/**
++	 * 
++	 */
+ 	private void createMenu() {
+ 		JMenu menu;
+ 		JMenuItem menuItem;
+@@ -146,13 +159,29 @@
+ 	}
+ 	
+ 	
++	private void applySettings() //(JFrame window)
++	{
++		if (settings.load())
++		{
++			mainWindow.setLocation(settings.getX(), settings.getY());
++			mainWindow.setSize(settings.getWidth(), settings.getHeight());
++		}
++		else
++		{
++			mainWindow.setSize(800, 400);
++		}
++
++	}
++	
++	
+ 	/**
+ 	 * 
+ 	 */
+ 	private static void createAndShowGUI() {
+ 		JFrame.setDefaultLookAndFeelDecorated(true);
+ 		JFrame window = new JFrame(&quot;OpenTask -- &quot; + Version.getVersion());
+-
++		mainWindow = window;
++		
+ 		OpenTask task = new OpenTask();
+ 		task.createMainPane();
+ 		task.createMenu();	
+@@ -161,7 +190,7 @@
+ 		window.setContentPane(task.mainPanel);
+ 		
+ 		window.pack();
+-		window.setSize(800, 400);
++		task.applySettings();//(window);
+ 		window.setVisible(true);
+ 		
+ 	}
+@@ -210,7 +239,11 @@
+      * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+      */
+     public void actionPerformed(ActionEvent e) {
+-    	if (app instanceof OpenTask) ((OpenTask)app).saveData();
++    	if (app instanceof OpenTask) 
++    	{
++    		((OpenTask)app).saveData();
++    		((OpenTask)app).saveSettings();
++    	}
+         System.exit(0);
+     }
+ }
+
+Added: trunk/src/opentask/Settings.java
+===================================================================
+--- trunk/src/opentask/Settings.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/Settings.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -0,0 +1,122 @@
++/**
++ * 
++ */
++package opentask;
++
++import java.io.*;
++import java.util.StringTokenizer;
++
++
++/**
++ * @author rassler
++ *
++ */
++public class Settings {
++	private final String SEPARATOR = &quot;,&quot;;
++	private int x, y;
++	private int width, height;
++	
++	public int getX() {
++		return x;
++	}
++	public int getY() {
++		return y;
++	}
++	public int getWidth() {
++		return width;
++	}
++	public int getHeight() {
++		return height;
++	}
++	
++	public void setPosition(int x, int y) {
++		this.x = x;
++		this.y = y;
++	}
++	
++	public void setSize(int width, int height) {
++		this.width = width;
++		this.height = height;
++	}
++	
++	public boolean load()
++	{
++		BufferedReader inputStream = null;
++		boolean success = true;
++		int cnt = 0;
++
++		try {
++			inputStream = new BufferedReader(new FileReader(Environment.getSettingsFile()));
++			while (inputStream.ready()) {
++				String line = inputStream.readLine();
++				StringTokenizer tokenizer = new StringTokenizer(line, SEPARATOR);
++				if (cnt == 0)
++				{
++					x = new Integer(tokenizer.nextToken()).intValue();
++					y = new Integer(tokenizer.nextToken()).intValue();
++				}
++				if (cnt == 1)
++				{
++					width = new Integer(tokenizer.nextToken()).intValue();
++					height = new Integer(tokenizer.nextToken()).intValue();
++				}
++				++cnt;
++			}
++					
++		}
++		catch (FileNotFoundException e) {
++			System.err.println(&quot;Caught FileNotFoundException: &quot; +  e.getMessage());
++			success = false;
++		}
++		catch (IOException e) {
++			System.err.println(&quot;Caught IOException: &quot; +  e.getMessage());
++			success = false;
++		}
++		finally {
++            if (inputStream != null) {
++            	try {
++            		inputStream.close();
++            	}
++                catch (IOException e) {
++                	System.err.println(&quot;Caught IOException: &quot; +  e.getMessage());
++                	success = false;
++                }
++            }
++        }
++		return success;
++	}
++	
++	public boolean save()
++	{
++		BufferedWriter outputStream = null;
++		boolean success = true;
++		try {
++			File file = new File(Environment.getSettingsFile());
++			if (!file.exists())
++				file.createNewFile();
++			outputStream = new BufferedWriter(new FileWriter(Environment.getSettingsFile()));
++
++			outputStream.write(new Integer(x).toString() + SEPARATOR + new Integer(y).toString());
++			outputStream.newLine();
++			outputStream.write(new Integer(width).toString() + SEPARATOR + new Integer(height).toString());
++			outputStream.newLine();
++		}
++		catch (IOException e) {
++			System.err.println(&quot;Caught IOException: &quot; +  e.getMessage());
++			success = false;
++		}
++		finally {
++			if (outputStream != null) {
++                try {
++                	outputStream.close();
++                }
++                catch (IOException e) {
++                	System.err.println(&quot;Caught IOException: &quot; +  e.getMessage());
++                	success = false;
++                }
++			}
++		}
++		return success;
++	}
++	
++}
+
+
+Property changes on: trunk/src/opentask/Settings.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000003.html">[Opentask-devel] r28 - in trunk/src/opentask: . data
+</A></li>
+	<LI>Next message: <A HREF="000005.html">[Opentask-devel] r30 - in trunk: . src/opentask
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#4">[ date ]</a>
+              <a href="thread.html#4">[ thread ]</a>
+              <a href="subject.html#4">[ subject ]</a>
+              <a href="author.html#4">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

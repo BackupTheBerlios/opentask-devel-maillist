@@ -1,0 +1,1959 @@
+From j_a_r at mail.berlios.de  Fri Feb  1 18:35:59 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Fri, 1 Feb 2008 18:35:59 +0100
+Subject: [Opentask-devel] r28 - in trunk/src/opentask: . data
+Message-ID: <200802011735.m11HZxIl011210@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-01 18:35:58 +0100 (Fri, 01 Feb 2008)
+New Revision: 28
+
+Added:
+   trunk/src/opentask/Environment.java
+Modified:
+   trunk/src/opentask/data/ItemList.java
+Log:
+implemented common environment class for OpenTask files
+
+Added: trunk/src/opentask/Environment.java
+===================================================================
+--- trunk/src/opentask/Environment.java	2008-01-31 11:01:43 UTC (rev 27)
++++ trunk/src/opentask/Environment.java	2008-02-01 17:35:58 UTC (rev 28)
+@@ -0,0 +1,20 @@
++/**
++ * 
++ */
++package opentask;
++
++/**
++ * @author rassler
++ *
++ */
++public class Environment {
++	private static String dataPath = System.getProperty("user.home");
++	private static String fileSeparator = System.getProperty("file.separator");
++	
++	private static String dataFile = "opentask.dat";
++	
++	public static String getDataFile()
++	{
++		return dataPath + fileSeparator + dataFile;
++	}
++}
+
+
+Property changes on: trunk/src/opentask/Environment.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+Modified: trunk/src/opentask/data/ItemList.java
+===================================================================
+--- trunk/src/opentask/data/ItemList.java	2008-01-31 11:01:43 UTC (rev 27)
++++ trunk/src/opentask/data/ItemList.java	2008-02-01 17:35:58 UTC (rev 28)
+@@ -21,6 +21,8 @@
+ 
+ package opentask.data;
+ 
++import opentask.Environment;
++
+ import java.util.*;
+ 
+ import java.io.*;
+@@ -33,7 +35,6 @@
+ public class ItemList {
+ 	private TreeSet<ActionItem> list;
+ 	private ItemListModel model;
+-	private final String fileName = System.getProperty("user.home") + System.getProperty("file.separator") + "opentask.dat";
+ 	private final String SEPARATOR = "#";
+ 	
+ 	/**
+@@ -180,10 +181,10 @@
+ 		BufferedWriter outputStream = null;
+ 		boolean success = true;
+ 		try {
+-			File file = new File(fileName);
++			File file = new File(Environment.getDataFile());
+ 			if (!file.exists())
+ 				file.createNewFile();
+-			outputStream = new BufferedWriter(new FileWriter(fileName));
++			outputStream = new BufferedWriter(new FileWriter(Environment.getDataFile()));
+ 			Iterator<ActionItem> it = iterator();
+ 			while (it.hasNext()) {
+ 				ActionItem item = it.next();
+@@ -216,7 +217,7 @@
+ 		BufferedReader inputStream = null;
+ 		boolean success = true;
+ 		try {
+-			inputStream = new BufferedReader(new FileReader(fileName));
++			inputStream = new BufferedReader(new FileReader(Environment.getDataFile()));
+ 			while (inputStream.ready()) {
+ 				String line = inputStream.readLine();
+ 				if (line.length() == 0) break; 
+
+
+
+From j_a_r at mail.berlios.de  Fri Feb  1 19:23:20 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Fri, 1 Feb 2008 19:23:20 +0100
+Subject: [Opentask-devel] r29 - in trunk: . src/opentask
+Message-ID: <200802011823.m11INKQG021328@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-01 19:23:20 +0100 (Fri, 01 Feb 2008)
+New Revision: 29
+
+Added:
+   trunk/src/opentask/Settings.java
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/Environment.java
+   trunk/src/opentask/OpenTask.java
+Log:
+implemented settings saving and loading capability
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/changelog.txt	2008-02-01 18:23:20 UTC (rev 29)
+@@ -2,6 +2,7 @@
+ =====
+ * implemented table column width calculation
+ * added periodically autosave function
++* implemented settings saving and loading capability
+ * fixed bug in notification / deletion of elapsed but un-notified tasks
+ * fixed bug in sorting order
+ 
+
+Modified: trunk/src/opentask/Environment.java
+===================================================================
+--- trunk/src/opentask/Environment.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/Environment.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -12,9 +12,15 @@
+ 	private static String fileSeparator = System.getProperty("file.separator");
+ 	
+ 	private static String dataFile = "opentask.dat";
++	private static String settingsFile = "opentask.ini";
+ 	
+ 	public static String getDataFile()
+ 	{
+ 		return dataPath + fileSeparator + dataFile;
+ 	}
++	
++	public static String getSettingsFile()
++	{
++		return dataPath + fileSeparator + settingsFile;
++	}
+ }
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/OpenTask.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -37,12 +37,14 @@
+ public class OpenTask implements ActionListener{
+ 
+ 	// important GUI elements
++	static JFrame mainWindow;
+ 	public JPanel mainPanel;
+ 	JMenuBar menuBar;
+ 	JTable table;
+ 	Timer notifyTimer, autoRepeatTimer;
+ 	
+ 	// important Data 
++	private Settings settings;
+ 	private boolean dirty;
+ 	private ItemList itemList;
+ 	private ItemListModel model;
+@@ -55,6 +57,8 @@
+ 	 * 
+ 	 */
+ 	public OpenTask() {
++		settings = new Settings();
++		
+ 		model = new ItemListModel();
+ 		itemList = new ItemList(model);	
+ 		if (!itemList.load())
+@@ -89,6 +93,15 @@
+ 	/**
+ 	 * 
+ 	 */
++	public void saveSettings() {
++		settings.setPosition(mainWindow.getX(), mainWindow.getY());
++		settings.setSize(mainWindow.getWidth(), mainWindow.getHeight());
++		settings.save();
++	}
++
++	/**
++	 * 
++	 */
+ 	private void createMenu() {
+ 		JMenu menu;
+ 		JMenuItem menuItem;
+@@ -146,13 +159,29 @@
+ 	}
+ 	
+ 	
++	private void applySettings() //(JFrame window)
++	{
++		if (settings.load())
++		{
++			mainWindow.setLocation(settings.getX(), settings.getY());
++			mainWindow.setSize(settings.getWidth(), settings.getHeight());
++		}
++		else
++		{
++			mainWindow.setSize(800, 400);
++		}
++
++	}
++	
++	
+ 	/**
+ 	 * 
+ 	 */
+ 	private static void createAndShowGUI() {
+ 		JFrame.setDefaultLookAndFeelDecorated(true);
+ 		JFrame window = new JFrame("OpenTask -- " + Version.getVersion());
+-
++		mainWindow = window;
++		
+ 		OpenTask task = new OpenTask();
+ 		task.createMainPane();
+ 		task.createMenu();	
+@@ -161,7 +190,7 @@
+ 		window.setContentPane(task.mainPanel);
+ 		
+ 		window.pack();
+-		window.setSize(800, 400);
++		task.applySettings();//(window);
+ 		window.setVisible(true);
+ 		
+ 	}
+@@ -210,7 +239,11 @@
+      * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+      */
+     public void actionPerformed(ActionEvent e) {
+-    	if (app instanceof OpenTask) ((OpenTask)app).saveData();
++    	if (app instanceof OpenTask) 
++    	{
++    		((OpenTask)app).saveData();
++    		((OpenTask)app).saveSettings();
++    	}
+         System.exit(0);
+     }
+ }
+
+Added: trunk/src/opentask/Settings.java
+===================================================================
+--- trunk/src/opentask/Settings.java	2008-02-01 17:35:58 UTC (rev 28)
++++ trunk/src/opentask/Settings.java	2008-02-01 18:23:20 UTC (rev 29)
+@@ -0,0 +1,122 @@
++/**
++ * 
++ */
++package opentask;
++
++import java.io.*;
++import java.util.StringTokenizer;
++
++
++/**
++ * @author rassler
++ *
++ */
++public class Settings {
++	private final String SEPARATOR = ",";
++	private int x, y;
++	private int width, height;
++	
++	public int getX() {
++		return x;
++	}
++	public int getY() {
++		return y;
++	}
++	public int getWidth() {
++		return width;
++	}
++	public int getHeight() {
++		return height;
++	}
++	
++	public void setPosition(int x, int y) {
++		this.x = x;
++		this.y = y;
++	}
++	
++	public void setSize(int width, int height) {
++		this.width = width;
++		this.height = height;
++	}
++	
++	public boolean load()
++	{
++		BufferedReader inputStream = null;
++		boolean success = true;
++		int cnt = 0;
++
++		try {
++			inputStream = new BufferedReader(new FileReader(Environment.getSettingsFile()));
++			while (inputStream.ready()) {
++				String line = inputStream.readLine();
++				StringTokenizer tokenizer = new StringTokenizer(line, SEPARATOR);
++				if (cnt == 0)
++				{
++					x = new Integer(tokenizer.nextToken()).intValue();
++					y = new Integer(tokenizer.nextToken()).intValue();
++				}
++				if (cnt == 1)
++				{
++					width = new Integer(tokenizer.nextToken()).intValue();
++					height = new Integer(tokenizer.nextToken()).intValue();
++				}
++				++cnt;
++			}
++					
++		}
++		catch (FileNotFoundException e) {
++			System.err.println("Caught FileNotFoundException: " +  e.getMessage());
++			success = false;
++		}
++		catch (IOException e) {
++			System.err.println("Caught IOException: " +  e.getMessage());
++			success = false;
++		}
++		finally {
++            if (inputStream != null) {
++            	try {
++            		inputStream.close();
++            	}
++                catch (IOException e) {
++                	System.err.println("Caught IOException: " +  e.getMessage());
++                	success = false;
++                }
++            }
++        }
++		return success;
++	}
++	
++	public boolean save()
++	{
++		BufferedWriter outputStream = null;
++		boolean success = true;
++		try {
++			File file = new File(Environment.getSettingsFile());
++			if (!file.exists())
++				file.createNewFile();
++			outputStream = new BufferedWriter(new FileWriter(Environment.getSettingsFile()));
++
++			outputStream.write(new Integer(x).toString() + SEPARATOR + new Integer(y).toString());
++			outputStream.newLine();
++			outputStream.write(new Integer(width).toString() + SEPARATOR + new Integer(height).toString());
++			outputStream.newLine();
++		}
++		catch (IOException e) {
++			System.err.println("Caught IOException: " +  e.getMessage());
++			success = false;
++		}
++		finally {
++			if (outputStream != null) {
++                try {
++                	outputStream.close();
++                }
++                catch (IOException e) {
++                	System.err.println("Caught IOException: " +  e.getMessage());
++                	success = false;
++                }
++			}
++		}
++		return success;
++	}
++	
++}
+
+
+Property changes on: trunk/src/opentask/Settings.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 12:48:21 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 12:48:21 +0100
+Subject: [Opentask-devel] r30 - in trunk: . src/opentask
+Message-ID: <200802071148.m17BmL2i005012@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 12:48:18 +0100 (Thu, 07 Feb 2008)
+New Revision: 30
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/NotifyDialog.java
+   trunk/src/opentask/OpenTask.java
+   trunk/src/opentask/Version.java
+Log:
+fixed notification bug and minor code cleanup
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/changelog.txt	2008-02-07 11:48:18 UTC (rev 30)
+@@ -1,3 +1,7 @@
++0.1.4
++=====
++* fixed bug in notification behaviour
++
+ 0.1.3
+ =====
+ * implemented table column width calculation
+
+Modified: trunk/src/opentask/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/NotifyDialog.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -86,14 +86,15 @@
+ 			item.setNotified(true);
+ 			itemList.add(item);
+ 			// do nothing... wait for item to be invalid
+-//			itemList.remove(item);
+ 			setVisible(false);
+ 		}
+ 		else if (e.getSource().equals(bLater)){
+ 			itemList.remove(item);
+ 			Calendar cal = Calendar.getInstance();
++			// FIXME: use real delay value (currently only default delay is used)
+ 			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
+ 			item.setNotifyTime(cal);
++			item.setNotified(false);
+ 			itemList.add(item);
+ 			setVisible(false);
+ 		}
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -50,8 +50,9 @@
+ 	private ItemListModel model;
+ 	
+ 	// constants
+-	private final int DELAY = 1000;	// milliseconds
+-	private final int AUTO_REPEAT_DELAY = DELAY * 60 * 5;	// currently 5 minutes
++	private final int SECOND = 1000;	// milliseconds
++	private final int DELAY = 5 * SECOND; 
++	private final int AUTO_REPEAT_DELAY = SECOND * 60 * 5;	// currently 5 minutes
+ 
+ 	/**
+ 	 * 
+@@ -415,23 +416,26 @@
+ 		while (it.hasNext()) {
+ 			ActionItem item = it.next();
+ 			Calendar notify = item.getNotifyTime();
+-			if (notify.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+-					&& notify.get(Calendar.MONTH) == now.get(Calendar.MONTH)
+-					&& notify.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
+-					&& notify.get(Calendar.HOUR_OF_DAY) == now.get(Calendar.HOUR_OF_DAY)
+-					&& notify.get(Calendar.MINUTE) == now.get(Calendar.MINUTE)
+-					)
++			if (notify.getTimeInMillis() < now.getTimeInMillis() || notify.getTimeInMillis() == now.getTimeInMillis())
+ 			{
+ 				if (item.isNotified() == false)
++				{
++					item.setNotified(true);
+ 					app.notifyTask(item);
++					break;
++				}
+ 			}
+-			Calendar schedule = item.getSchedule();
+-			if (schedule.getTimeInMillis() < now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++			if (item.isNotified() == true)
+ 			{
+-				// notify, although time is over
+-				app.notifyTask(item);
+-				// delete item anyway
+-				list.remove(item);
++				Calendar schedule = item.getSchedule();
++				if (schedule.getTimeInMillis() < now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++				{
++					// notify, although time is over
++					app.notifyTask(item);
++					// delete item anyway
++					list.remove(item);
++					break;
++				}
+ 			}
+ 		}
+ 	}
+
+Modified: trunk/src/opentask/Version.java
+===================================================================
+--- trunk/src/opentask/Version.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/Version.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -10,7 +10,7 @@
+ public class Version {
+ 	public static int major = 0;
+ 	public static int minor = 1;
+-	public static int buglevel = 3;
++	public static int buglevel = 4;
+ 	
+ 	public static String getVersion() {
+ 		return (new Integer(major)).toString() + "." + (new Integer(minor)).toString() + "." + (new Integer(buglevel)).toString();
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 13:41:57 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 13:41:57 +0100
+Subject: [Opentask-devel] r31 - trunk/src/opentask/data
+Message-ID: <200802071241.m17Cfv5i030088@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 13:41:57 +0100 (Thu, 07 Feb 2008)
+New Revision: 31
+
+Removed:
+   trunk/src/opentask/data/TableColumnPacker.java
+Log:
+restructuring
+
+Deleted: trunk/src/opentask/data/TableColumnPacker.java
+===================================================================
+--- trunk/src/opentask/data/TableColumnPacker.java	2008-02-07 11:48:18 UTC (rev 30)
++++ trunk/src/opentask/data/TableColumnPacker.java	2008-02-07 12:41:57 UTC (rev 31)
+@@ -1,63 +0,0 @@
+-/**
+- * 
+- */
+-package opentask.data;
+-
+-import javax.swing.*;
+-import javax.swing.table.*;
+-import java.awt.Component;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class TableColumnPacker {
+-
+-	private JTable table;
+-	
+-	public TableColumnPacker(JTable table)
+-	{
+-		this.table = table;
+-	}
+-	
+-	public void packColumns()
+-	{
+-	    for (int c = 0; c < table.getColumnCount(); ++c) 
+-	        packColumn(c, 2);
+-	}
+-	
+-	private void packColumn(int vColIndex, int margin)
+-	{
+-//	    TableModel model = table.getModel();
+-	    DefaultTableColumnModel colModel = (DefaultTableColumnModel)table.getColumnModel();
+-	    TableColumn col = colModel.getColumn(vColIndex);
+-	    int width = 0;
+-
+-	    // Get width of column header
+-	    TableCellRenderer renderer = col.getHeaderRenderer();
+-	    if (renderer == null) {
+-	        renderer = table.getTableHeader().getDefaultRenderer();
+-	    }
+-	    Component comp = renderer.getTableCellRendererComponent(
+-	        table, col.getHeaderValue(), false, false, 0, 0);
+-	    width = comp.getPreferredSize().width;
+-
+-	    // Get maximum width of column data
+-	    for (int r = 0; r < table.getRowCount(); ++r) 
+-	    {
+-	        renderer = table.getCellRenderer(r, vColIndex);
+-	        comp = renderer.getTableCellRendererComponent(
+-	            table, table.getValueAt(r, vColIndex), false, false, r, vColIndex);
+-	        width = Math.max(width, comp.getPreferredSize().width);
+-	    }
+-
+-	    // Add margin
+-	    width += 2*margin;
+-
+-	    // Set the width
+-	    col.setPreferredWidth(width);
+-		
+-	}
+-}
+-
+-
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 13:42:17 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 13:42:17 +0100
+Subject: [Opentask-devel] r32 - in trunk/src/opentask: . gui
+Message-ID: <200802071242.m17CgH3Y030153@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 13:42:17 +0100 (Thu, 07 Feb 2008)
+New Revision: 32
+
+Added:
+   trunk/src/opentask/gui/
+   trunk/src/opentask/gui/TableColumnPacker.java
+Modified:
+   trunk/src/opentask/OpenTask.java
+Log:
+restructuring
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 12:41:57 UTC (rev 31)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 12:42:17 UTC (rev 32)
+@@ -29,6 +29,7 @@
+ import java.util.Calendar;
+ 
+ import opentask.data.*;
++import opentask.gui.*;
+ 
+ /**
+  * @author rassler
+
+Copied: trunk/src/opentask/gui/TableColumnPacker.java (from rev 26, trunk/src/opentask/data/TableColumnPacker.java)
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 13:45:12 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 13:45:12 +0100
+Subject: [Opentask-devel] r33 - trunk/src/opentask/gui
+Message-ID: <200802071245.m17CjCaO030529@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 13:45:11 +0100 (Thu, 07 Feb 2008)
+New Revision: 33
+
+Modified:
+   trunk/src/opentask/gui/TableColumnPacker.java
+Log:
+restructuring
+
+Modified: trunk/src/opentask/gui/TableColumnPacker.java
+===================================================================
+--- trunk/src/opentask/gui/TableColumnPacker.java	2008-02-07 12:42:17 UTC (rev 32)
++++ trunk/src/opentask/gui/TableColumnPacker.java	2008-02-07 12:45:11 UTC (rev 33)
+@@ -1,7 +1,7 @@
+ /**
+  * 
+  */
+-package opentask.data;
++package opentask.gui;
+ 
+ import javax.swing.*;
+ import javax.swing.table.*;
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 14:48:25 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 14:48:25 +0100
+Subject: [Opentask-devel] r34 - trunk/src/opentask
+Message-ID: <200802071348.m17DmPmC005077@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 14:48:24 +0100 (Thu, 07 Feb 2008)
+New Revision: 34
+
+Modified:
+   trunk/src/opentask/OpenTask.java
+Log:
+code cleanup for notification and avoid double-notification
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 12:45:11 UTC (rev 33)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 13:48:24 UTC (rev 34)
+@@ -423,19 +423,19 @@
+ 				{
+ 					item.setNotified(true);
+ 					app.notifyTask(item);
++					// break, because list has been modified -- avoid concurrency exception
+ 					break;
+ 				}
+-			}
+-			if (item.isNotified() == true)
+-			{
+-				Calendar schedule = item.getSchedule();
+-				if (schedule.getTimeInMillis() < now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++				else
+ 				{
+-					// notify, although time is over
+-					app.notifyTask(item);
+-					// delete item anyway
+-					list.remove(item);
+-					break;
++					Calendar schedule = item.getSchedule();
++					if (schedule.getTimeInMillis() < now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++					{
++						// delete item anyway
++						list.remove(item);
++						// break, because list has been modified -- avoid concurrency exception
++						break;
++					}
+ 				}
+ 			}
+ 		}
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 15:56:28 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 15:56:28 +0100
+Subject: [Opentask-devel] r35 - in trunk: . src/opentask
+Message-ID: <200802071456.m17EuSBn014053@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 15:56:28 +0100 (Thu, 07 Feb 2008)
+New Revision: 35
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/NotifyDialog.java
+   trunk/src/opentask/OpenTask.java
+Log:
+changed notification behavior to just inform at schedule time
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-07 13:48:24 UTC (rev 34)
++++ trunk/changelog.txt	2008-02-07 14:56:28 UTC (rev 35)
+@@ -1,6 +1,8 @@
+ 0.1.4
+ =====
++* changed notification behavior to just inform at schedule time
+ * fixed bug in notification behaviour
++* minor code cleanup
+ 
+ 0.1.3
+ =====
+
+Modified: trunk/src/opentask/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-07 13:48:24 UTC (rev 34)
++++ trunk/src/opentask/NotifyDialog.java	2008-02-07 14:56:28 UTC (rev 35)
+@@ -46,7 +46,7 @@
+ 	 * @param itm
+ 	 * @param list
+ 	 */
+-	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list) {
++	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list, boolean remind) {
+ 		super(owner, title, true);
+ 		item = itm;
+ 		itemList = list;
+@@ -69,9 +69,12 @@
+ 		bDone = new JButton("Done!");
+ 		bDone.addActionListener(this);
+ 		pane.add(bDone);
+-		bLater = new JButton("Remind me later again!");
+-		bLater.addActionListener(this);
+-		pane.add(bLater);
++		if (!remind)
++		{
++			bLater = new JButton("Remind me later again!");
++			bLater.addActionListener(this);
++			pane.add(bLater);
++		}
+ 		add(pane);
+ 		
+ 		pack();
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 13:48:24 UTC (rev 34)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 14:56:28 UTC (rev 35)
+@@ -78,8 +78,8 @@
+ 	/**
+ 	 * @param item
+ 	 */
+-	public void notifyTask(ActionItem item) {
+-		NotifyDialog dialog = new NotifyDialog(null, "Notification", item, itemList);
++	public void notifyTask(ActionItem item, boolean remind) {
++		NotifyDialog dialog = new NotifyDialog(null, "Notification", item, itemList, remind);
+ 		dialog.setVisible(true);
+ 	}
+ 	
+@@ -422,7 +422,7 @@
+ 				if (item.isNotified() == false)
+ 				{
+ 					item.setNotified(true);
+-					app.notifyTask(item);
++					app.notifyTask(item, false);
+ 					// break, because list has been modified -- avoid concurrency exception
+ 					break;
+ 				}
+@@ -431,6 +431,7 @@
+ 					Calendar schedule = item.getSchedule();
+ 					if (schedule.getTimeInMillis() < now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
+ 					{
++						app.notifyTask(item, true);
+ 						// delete item anyway
+ 						list.remove(item);
+ 						// break, because list has been modified -- avoid concurrency exception
+
+
+
+From j_a_r at mail.berlios.de  Thu Feb  7 16:15:56 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Thu, 7 Feb 2008 16:15:56 +0100
+Subject: [Opentask-devel] r36 - in trunk: . src/opentask src/opentask/gui
+Message-ID: <200802071515.m17FFuwd016912@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-07 16:15:56 +0100 (Thu, 07 Feb 2008)
+New Revision: 36
+
+Added:
+   trunk/src/opentask/gui/CustomizedTableRenderer.java
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/OpenTask.java
+Log:
+implemented a basic table cell renderer
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-07 14:56:28 UTC (rev 35)
++++ trunk/changelog.txt	2008-02-07 15:15:56 UTC (rev 36)
+@@ -1,6 +1,7 @@
+ 0.1.4
+ =====
+ * changed notification behavior to just inform at schedule time
++* implemented a basic table cell renderer
+ * fixed bug in notification behaviour
+ * minor code cleanup
+ 
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 14:56:28 UTC (rev 35)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 15:15:56 UTC (rev 36)
+@@ -153,6 +153,7 @@
+ 		table.setRowHeight(23);
+ 		JScrollPane scrollPane = new JScrollPane(table);
+ 		table.setFillsViewportHeight(true);
++		table.setDefaultRenderer(Object.class, new CustomizedTableRenderer());
+ 		TableColumnPacker cPacker = new TableColumnPacker(table);
+ 		cPacker.packColumns();
+ 
+
+Added: trunk/src/opentask/gui/CustomizedTableRenderer.java
+===================================================================
+--- trunk/src/opentask/gui/CustomizedTableRenderer.java	2008-02-07 14:56:28 UTC (rev 35)
++++ trunk/src/opentask/gui/CustomizedTableRenderer.java	2008-02-07 15:15:56 UTC (rev 36)
+@@ -0,0 +1,27 @@
++/**
++ * 
++ */
++package opentask.gui;
++
++import javax.swing.table.DefaultTableCellRenderer;
++import javax.swing.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class CustomizedTableRenderer extends DefaultTableCellRenderer {
++    
++	public java.awt.Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) 
++	{
++		super.getTableCellRendererComponent(table,value,isSelected,hasFocus,row,column);
++		if (row%2 == 1) {
++			if (isSelected) setBackground(java.awt.Color.gray);
++			else setBackground(java.awt.Color.lightGray);
++		} else {
++			setBackground(table.getBackground());
++		}
++		return this;                  	
++	}
++
++}
+
+
+Property changes on: trunk/src/opentask/gui/CustomizedTableRenderer.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+
+
+From j_a_r at mail.berlios.de  Fri Feb  8 14:47:55 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Fri, 8 Feb 2008 14:47:55 +0100
+Subject: [Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs
+Message-ID: <200802081347.m18DltDd003295@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-08 14:47:54 +0100 (Fri, 08 Feb 2008)
+New Revision: 37
+
+Added:
+   trunk/src/opentask/dialogs/
+   trunk/src/opentask/dialogs/AboutDialog.java
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/OpenTask.java
+   trunk/src/opentask/Version.java
+Log:
+added about dialog
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/changelog.txt	2008-02-08 13:47:54 UTC (rev 37)
+@@ -1,3 +1,7 @@
++0.1.5
++=====
++* added about dialog
++
+ 0.1.4
+ =====
+ * changed notification behavior to just inform at schedule time
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/OpenTask.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -30,6 +30,7 @@
+ 
+ import opentask.data.*;
+ import opentask.gui.*;
++import opentask.dialogs.*;
+ 
+ /**
+  * @author rassler
+@@ -137,7 +138,10 @@
+         menuBar.add(menu);
+ 
+         // About Menu
+-        menu = new JMenu("About");
++        menu = new JMenu("Help");
++        menuItem = new JMenuItem("About");
++        menuItem.addActionListener(new AboutDialogAction());
++        menu.add(menuItem);
+         menuBar.add(menu);
+ 	}
+ 	
+@@ -393,6 +397,18 @@
+ }
+ 
+ 
++class AboutDialogAction implements ActionListener
++{
++	public void actionPerformed(ActionEvent e)
++	{
++		AboutDialog about = new AboutDialog(null);
++		about.setVisible(true);
++	}
++	
++}
++
++
++
+ /**
+  * @author rassler
+  *
+
+Modified: trunk/src/opentask/Version.java
+===================================================================
+--- trunk/src/opentask/Version.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/Version.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -10,7 +10,7 @@
+ public class Version {
+ 	public static int major = 0;
+ 	public static int minor = 1;
+-	public static int buglevel = 4;
++	public static int buglevel = 5;
+ 	
+ 	public static String getVersion() {
+ 		return (new Integer(major)).toString() + "." + (new Integer(minor)).toString() + "." + (new Integer(buglevel)).toString();
+
+Added: trunk/src/opentask/dialogs/AboutDialog.java
+===================================================================
+--- trunk/src/opentask/dialogs/AboutDialog.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/dialogs/AboutDialog.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -0,0 +1,53 @@
++/**
++ * 
++ */
++package opentask.dialogs;
++
++import java.awt.Frame;
++import java.awt.event.ActionEvent;
++import java.awt.event.ActionListener;
++
++import javax.swing.BoxLayout;
++import javax.swing.JButton;
++import javax.swing.JDialog;
++import javax.swing.JLabel;
++import javax.swing.JPanel;
++
++import opentask.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class AboutDialog extends JDialog implements ActionListener {
++
++	public AboutDialog(Frame owner)
++	{
++		super(owner, "OpenTask" + Version.getVersion(), true);
++
++		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
++		JLabel name = new JLabel("OpenTask " + Version.getVersion());
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		name = new JLabel("(c) 2008, Jochen Rassler\n\n");
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		name = new JLabel("This software is licensed under the GNU GPL Version 2.");
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++
++		JButton bDone = new JButton("Done!");
++		bDone.addActionListener(this);
++		add(bDone);
++		
++		pack();
++}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent arg0) {
++		setVisible(false);
++	}
++
++}
+
+
+Property changes on: trunk/src/opentask/dialogs/AboutDialog.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+
+
+From j_a_r at mail.berlios.de  Fri Feb  8 14:49:46 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Fri, 8 Feb 2008 14:49:46 +0100
+Subject: [Opentask-devel] r38 - in trunk/src/opentask: . dialogs
+Message-ID: <200802081349.m18DnkGW003421@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-02-08 14:49:46 +0100 (Fri, 08 Feb 2008)
+New Revision: 38
+
+Added:
+   trunk/src/opentask/dialogs/ItemDialog.java
+   trunk/src/opentask/dialogs/NotifyDialog.java
+Removed:
+   trunk/src/opentask/ItemDialog.java
+   trunk/src/opentask/NotifyDialog.java
+Log:
+refactoring
+
+Deleted: trunk/src/opentask/ItemDialog.java
+===================================================================
+--- trunk/src/opentask/ItemDialog.java	2008-02-08 13:47:54 UTC (rev 37)
++++ trunk/src/opentask/ItemDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -1,327 +0,0 @@
+-/* 
+- * ItemDialog.java
+- * OpenTask
+- *
+- * Copyright (C) 2007 Jochen A. Rassler
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+- */
+-package opentask;
+-
+-import java.util.*;
+-
+-import javax.swing.*;
+-import javax.swing.border.*;
+-import javax.swing.event.*;
+-import java.awt.event.*;
+-import java.awt.*;
+-
+-import opentask.data.*;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class ItemDialog extends JDialog implements ActionListener, ChangeListener, KeyListener {
+-	static final long serialVersionUID = 1;
+-	private ActionItem item;
+-	private boolean dirty;
+-	private int closeOP;
+-	
+-	public static int NONE = 0;
+-	public static int OK = 1;
+-	public static int CANCEL = -1;
+-	
+-	// GUI fields
+-	private JTextField tName;
+-	private JSpinner dSchedDateEditor;
+-	private JSpinner dSchedTimeEditor;
+-	private JTextField tDuration;
+-	private JSpinner dNoteDateEditor;
+-	private JSpinner dNoteTimeEditor;
+-	private JTextField tNextNotfy;
+-	private JTextArea tDescription;
+-	private JButton bCancel;
+-	private JButton bOk;
+-	
+-	/**
+-	 * @param owner
+-	 * @param title
+-	 */
+-	public ItemDialog(Frame owner, String title)
+-	{
+-		super(owner, title, true);
+-		dirty = false;
+-		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+-		
+-		GridBagLayout grid = new GridBagLayout();
+-		GridBagConstraints c = new GridBagConstraints();
+-		c.fill = GridBagConstraints.BOTH;
+-		c.insets = new Insets(5,5,5,5);
+-		this.setLayout(grid);
+-		
+-		Calendar past = Calendar.getInstance();
+-		past.add(Calendar.MONDAY, -1);
+-		Calendar now = Calendar.getInstance();
+-
+-		// first row : task name
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lName = new JLabel("Task Name");
+-		grid.setConstraints(lName, c);
+-		add(lName);
+-		//c.weightx = 2;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tName = new JTextField(15);
+-		grid.setConstraints(tName, c);
+-		tName.addKeyListener(this);
+-		add(tName);
+-		// second row : schedule label
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lSchedule = new JLabel("Schedule");
+-		grid.setConstraints(lSchedule, c);
+-		add(lSchedule);
+-		// third row : schedule fields
+-		c.weightx = 1;
+-		c.gridwidth = 1;
+-		JLabel lSchedDate = new JLabel("Date");
+-		grid.setConstraints(lSchedDate, c);
+-		add(lSchedDate);
+-			// Schedule Date Editor
+-		dSchedDateEditor = new JSpinner();
+-		dSchedDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
+-		dSchedDateEditor.setEditor(new JSpinner.DateEditor(dSchedDateEditor, "dd.MM.yyyy"));
+-		grid.setConstraints(dSchedDateEditor, c);
+-		dSchedDateEditor.addChangeListener(this);
+-		add(dSchedDateEditor);
+-		
+-		JLabel lSchedTime = new JLabel("Time");
+-		grid.setConstraints(lSchedTime, c);
+-		add(lSchedTime);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-
+-		dSchedTimeEditor = new JSpinner();
+-		dSchedTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
+-		dSchedTimeEditor.setEditor(new JSpinner.DateEditor(dSchedTimeEditor, "HH:mm"));
+-		grid.setConstraints(dSchedTimeEditor, c);
+-		dSchedTimeEditor.addChangeListener(this);
+-		add(dSchedTimeEditor);
+-		// fourth row : duration
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lDuration = new JLabel("Duration");
+-		grid.setConstraints(lDuration, c);
+-		add(lDuration);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tDuration = new JTextField(5);
+-		grid.setConstraints(tDuration, c);
+-		tDuration.addKeyListener(this);
+-		add(tDuration);
+-		// fifth row : notification label
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lNotification = new JLabel("Notification");
+-		grid.setConstraints(lNotification, c);
+-		add(lNotification);
+-		// sixth row : notification fields
+-		c.weightx = 1;
+-		c.gridwidth = 1;
+-		JLabel lNotDate = new JLabel("Date");
+-		grid.setConstraints(lNotDate, c);
+-		add(lNotDate);
+-			// Notification Date Editor
+-		dNoteDateEditor = new JSpinner();
+-		dNoteDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
+-		dNoteDateEditor.setEditor(new JSpinner.DateEditor(dNoteDateEditor, "dd.MM.yyyy"));
+-		grid.setConstraints(dNoteDateEditor, c);
+-		dNoteDateEditor.addChangeListener(this);
+-		add(dNoteDateEditor);
+-
+-		JLabel lNotTime = new JLabel("Time");
+-		grid.setConstraints(lNotTime, c);
+-		add(lNotTime);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-
+-		dNoteTimeEditor = new JSpinner();
+-		dNoteTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
+-		dNoteTimeEditor.setEditor(new JSpinner.DateEditor(dNoteTimeEditor, "HH:mm"));
+-		grid.setConstraints(dNoteTimeEditor, c);
+-		dNoteTimeEditor.addChangeListener(this);
+-		add(dNoteTimeEditor);
+-		// seventh row : nex Notification
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lNextNotify = new JLabel("Next Notification");
+-		grid.setConstraints(lNextNotify, c);
+-		add(lNextNotify);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tNextNotfy = new JTextField(5);
+-		grid.setConstraints(tNextNotfy, c);
+-		tNextNotfy.addKeyListener(this);
+-		add(tNextNotfy);
+-		// eightth row : description
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lDescription = new JLabel("Description");
+-		grid.setConstraints(lDescription, c);
+-		add(lDescription);
+-		// nineth row : description field
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tDescription = new JTextArea(5,30);
+-		tDescription.setBorder(new EtchedBorder());
+-		tDescription.setLineWrap(true);
+-		grid.setConstraints(tDescription, c);
+-		tDescription.addKeyListener(this);
+-		add(tDescription);
+-		
+-		// tenth row: buttons
+-		c.weightx = 2;
+-		c.gridwidth = 2;
+-		JLabel lNone = new JLabel();
+-		grid.setConstraints(lNone, c);
+-		add(lNone);
+-		c.weightx = 1;
+-		bOk = new JButton("Ok");
+-		grid.setConstraints(bOk, c);
+-		bOk.addActionListener(this);
+-		add(bOk);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		bCancel = new JButton("Cancel");
+-		grid.setConstraints(bCancel, c);
+-		bCancel.addActionListener(this);
+-		add(bCancel);
+-
+-		closeOP = NONE;
+-		
+-		pack();
+-	}
+-	
+-	/**
+-	 * @param item
+-	 */
+-	public void setData(ActionItem item) {
+-		tName.setText(item.getItemName());
+-		dSchedDateEditor.setValue(item.getSchedule().getTime());
+-		dSchedTimeEditor.setValue(item.getSchedule().getTime());
+-		tDuration.setText(new Integer(item.getDuration()).toString());
+-		dNoteDateEditor.setValue(item.getNotifyTime().getTime());
+-		dNoteTimeEditor.setValue(item.getNotifyTime().getTime());
+-		tNextNotfy.setText(new Integer(item.getNextNotification()).toString());
+-		tDescription.setText(item.getDescription());
+-	}
+-
+-	public int getCloseOP() {
+-		return closeOP;
+-	}
+-	
+-	/**
+-	 * @return
+-	 */
+-	public ActionItem getData() {
+-		return item;
+-	}
+-	
+-	/**
+-	 * @return
+-	 */
+-	private boolean checkFields() {
+-		if (tName.getText().length() == 0)
+-		{
+-			JOptionPane.showMessageDialog(this, "A name for the task is mandatory!", "Name needed!", JOptionPane.WARNING_MESSAGE);
+-			return false;
+-		}
+-		return true;
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+-	 */
+-	public void actionPerformed(ActionEvent e) {
+-		Object obj = e.getSource();
+-		if (obj.equals(bCancel))
+-		{
+-			setVisible(false);
+-			closeOP = CANCEL;
+-		}
+-		else if (obj.equals(bOk))
+-		{
+-			if (dirty) {
+-				if (checkFields())
+-				{
+-					Calendar schedule = Calendar.getInstance();
+-					Calendar notification = Calendar.getInstance();
+-					JSpinner.DateEditor editor;
+-					SpinnerDateModel dModel;
+-					SpinnerDateModel tModel;
+-					Calendar dCal = Calendar.getInstance();
+-					Calendar tCal = Calendar.getInstance();
+-					
+-					editor = (JSpinner.DateEditor)dSchedDateEditor.getEditor();
+-					dModel = editor.getModel();
+-					dCal.setTime(dModel.getDate());
+-					editor = (JSpinner.DateEditor)dSchedTimeEditor.getEditor();
+-					tModel = editor.getModel();
+-					tCal.setTime(tModel.getDate());
+-					schedule.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
+-					
+-					editor = (JSpinner.DateEditor)dNoteDateEditor.getEditor();
+-					dModel = editor.getModel();
+-					dCal.setTime(dModel.getDate());
+-					editor = (JSpinner.DateEditor)dNoteTimeEditor.getEditor();
+-					tModel = editor.getModel();
+-					tCal.setTime(tModel.getDate());
+-					notification.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
+-					
+-					item = new ActionItem(tName.getText(), schedule, notification, new Integer(tDuration.getText()), new Integer(tNextNotfy.getText()), tDescription.getText());
+-					setVisible(false);
+-				}
+-			}
+-			else setVisible(false);
+-			closeOP = OK;
+-		}
+-    }
+-
+-	// Listeners to detect modification of data
+-	/* (non-Javadoc)
+-	 * @see javax.swing.event.ChangeListener#stateChanged(javax.swing.event.ChangeEvent)
+-	 */
+-	public void stateChanged(ChangeEvent e) {
+-		dirty = true;
+-	}
+-
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyPressed(java.awt.event.KeyEvent)
+-	 */
+-	public void keyPressed(KeyEvent e) {
+-		
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyReleased(java.awt.event.KeyEvent)
+-	 */
+-	public void keyReleased(KeyEvent e) {
+-		
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyTyped(java.awt.event.KeyEvent)
+-	 */
+-	public void keyTyped(KeyEvent e) {
+-		dirty = true;
+-	}
+-}
+-
+
+Deleted: trunk/src/opentask/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-08 13:47:54 UTC (rev 37)
++++ trunk/src/opentask/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -1,105 +0,0 @@
+-/* 
+- * NotifyDialog.java
+- * OpenTask
+- *
+- * Copyright (C) 2007 Jochen A. Rassler
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+- */
+-package opentask;
+-
+-import java.awt.Frame;
+-import javax.swing.*;
+-import java.awt.event.*;
+-import java.util.Calendar;
+-
+-import opentask.data.*;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class NotifyDialog extends JDialog implements ActionListener{
+-	public static final long serialVersionUID = 1;
+-	
+-	private ActionItem item;
+-	private ItemList itemList;
+-	
+-	JButton bDone;
+-	JButton bLater;
+-	
+-	/**
+-	 * @param owner
+-	 * @param title
+-	 * @param itm
+-	 * @param list
+-	 */
+-	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list, boolean remind) {
+-		super(owner, title, true);
+-		item = itm;
+-		itemList = list;
+-		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+-
+-		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
+-		JLabel name = new JLabel(item.getItemName());
+-		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+-		add(name);
+-		JLabel date = new JLabel(item.getSchedule().getTime().toString());
+-		add(date);
+-		JTextArea description = new JTextArea(item.getDescription(), 5, 30);
+-		description.setEditable(false);
+-		add(description);
+-		JSeparator separator = new JSeparator();
+-		add(separator);
+-		
+-		JPanel pane = new JPanel();
+-		pane.setLayout(new BoxLayout(pane, BoxLayout.X_AXIS));
+-		bDone = new JButton("Done!");
+-		bDone.addActionListener(this);
+-		pane.add(bDone);
+-		if (!remind)
+-		{
+-			bLater = new JButton("Remind me later again!");
+-			bLater.addActionListener(this);
+-			pane.add(bLater);
+-		}
+-		add(pane);
+-		
+-		pack();
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+-	 */
+-	public void actionPerformed(ActionEvent e) {
+-		if (e.getSource().equals(bDone)) {
+-			itemList.remove(item);
+-			item.setNotified(true);
+-			itemList.add(item);
+-			// do nothing... wait for item to be invalid
+-			setVisible(false);
+-		}
+-		else if (e.getSource().equals(bLater)){
+-			itemList.remove(item);
+-			Calendar cal = Calendar.getInstance();
+-			// FIXME: use real delay value (currently only default delay is used)
+-			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
+-			item.setNotifyTime(cal);
+-			item.setNotified(false);
+-			itemList.add(item);
+-			setVisible(false);
+-		}
+-	}
+-}
+
+Copied: trunk/src/opentask/dialogs/ItemDialog.java (from rev 32, trunk/src/opentask/ItemDialog.java)
+===================================================================
+--- trunk/src/opentask/ItemDialog.java	2008-02-07 12:42:17 UTC (rev 32)
++++ trunk/src/opentask/dialogs/ItemDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -0,0 +1,327 @@
++/* 
++ * ItemDialog.java
++ * OpenTask
++ *
++ * Copyright (C) 2007 Jochen A. Rassler
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ */
++package opentask.dialogs;
++
++import java.util.*;
++
++import javax.swing.*;
++import javax.swing.border.*;
++import javax.swing.event.*;
++import java.awt.event.*;
++import java.awt.*;
++
++import opentask.data.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class ItemDialog extends JDialog implements ActionListener, ChangeListener, KeyListener {
++	static final long serialVersionUID = 1;
++	private ActionItem item;
++	private boolean dirty;
++	private int closeOP;
++	
++	public static int NONE = 0;
++	public static int OK = 1;
++	public static int CANCEL = -1;
++	
++	// GUI fields
++	private JTextField tName;
++	private JSpinner dSchedDateEditor;
++	private JSpinner dSchedTimeEditor;
++	private JTextField tDuration;
++	private JSpinner dNoteDateEditor;
++	private JSpinner dNoteTimeEditor;
++	private JTextField tNextNotfy;
++	private JTextArea tDescription;
++	private JButton bCancel;
++	private JButton bOk;
++	
++	/**
++	 * @param owner
++	 * @param title
++	 */
++	public ItemDialog(Frame owner, String title)
++	{
++		super(owner, title, true);
++		dirty = false;
++		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
++		
++		GridBagLayout grid = new GridBagLayout();
++		GridBagConstraints c = new GridBagConstraints();
++		c.fill = GridBagConstraints.BOTH;
++		c.insets = new Insets(5,5,5,5);
++		this.setLayout(grid);
++		
++		Calendar past = Calendar.getInstance();
++		past.add(Calendar.MONDAY, -1);
++		Calendar now = Calendar.getInstance();
++
++		// first row : task name
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lName = new JLabel("Task Name");
++		grid.setConstraints(lName, c);
++		add(lName);
++		//c.weightx = 2;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tName = new JTextField(15);
++		grid.setConstraints(tName, c);
++		tName.addKeyListener(this);
++		add(tName);
++		// second row : schedule label
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lSchedule = new JLabel("Schedule");
++		grid.setConstraints(lSchedule, c);
++		add(lSchedule);
++		// third row : schedule fields
++		c.weightx = 1;
++		c.gridwidth = 1;
++		JLabel lSchedDate = new JLabel("Date");
++		grid.setConstraints(lSchedDate, c);
++		add(lSchedDate);
++			// Schedule Date Editor
++		dSchedDateEditor = new JSpinner();
++		dSchedDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
++		dSchedDateEditor.setEditor(new JSpinner.DateEditor(dSchedDateEditor, "dd.MM.yyyy"));
++		grid.setConstraints(dSchedDateEditor, c);
++		dSchedDateEditor.addChangeListener(this);
++		add(dSchedDateEditor);
++		
++		JLabel lSchedTime = new JLabel("Time");
++		grid.setConstraints(lSchedTime, c);
++		add(lSchedTime);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++
++		dSchedTimeEditor = new JSpinner();
++		dSchedTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
++		dSchedTimeEditor.setEditor(new JSpinner.DateEditor(dSchedTimeEditor, "HH:mm"));
++		grid.setConstraints(dSchedTimeEditor, c);
++		dSchedTimeEditor.addChangeListener(this);
++		add(dSchedTimeEditor);
++		// fourth row : duration
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lDuration = new JLabel("Duration");
++		grid.setConstraints(lDuration, c);
++		add(lDuration);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tDuration = new JTextField(5);
++		grid.setConstraints(tDuration, c);
++		tDuration.addKeyListener(this);
++		add(tDuration);
++		// fifth row : notification label
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lNotification = new JLabel("Notification");
++		grid.setConstraints(lNotification, c);
++		add(lNotification);
++		// sixth row : notification fields
++		c.weightx = 1;
++		c.gridwidth = 1;
++		JLabel lNotDate = new JLabel("Date");
++		grid.setConstraints(lNotDate, c);
++		add(lNotDate);
++			// Notification Date Editor
++		dNoteDateEditor = new JSpinner();
++		dNoteDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
++		dNoteDateEditor.setEditor(new JSpinner.DateEditor(dNoteDateEditor, "dd.MM.yyyy"));
++		grid.setConstraints(dNoteDateEditor, c);
++		dNoteDateEditor.addChangeListener(this);
++		add(dNoteDateEditor);
++
++		JLabel lNotTime = new JLabel("Time");
++		grid.setConstraints(lNotTime, c);
++		add(lNotTime);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++
++		dNoteTimeEditor = new JSpinner();
++		dNoteTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
++		dNoteTimeEditor.setEditor(new JSpinner.DateEditor(dNoteTimeEditor, "HH:mm"));
++		grid.setConstraints(dNoteTimeEditor, c);
++		dNoteTimeEditor.addChangeListener(this);
++		add(dNoteTimeEditor);
++		// seventh row : nex Notification
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lNextNotify = new JLabel("Next Notification");
++		grid.setConstraints(lNextNotify, c);
++		add(lNextNotify);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tNextNotfy = new JTextField(5);
++		grid.setConstraints(tNextNotfy, c);
++		tNextNotfy.addKeyListener(this);
++		add(tNextNotfy);
++		// eightth row : description
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lDescription = new JLabel("Description");
++		grid.setConstraints(lDescription, c);
++		add(lDescription);
++		// nineth row : description field
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tDescription = new JTextArea(5,30);
++		tDescription.setBorder(new EtchedBorder());
++		tDescription.setLineWrap(true);
++		grid.setConstraints(tDescription, c);
++		tDescription.addKeyListener(this);
++		add(tDescription);
++		
++		// tenth row: buttons
++		c.weightx = 2;
++		c.gridwidth = 2;
++		JLabel lNone = new JLabel();
++		grid.setConstraints(lNone, c);
++		add(lNone);
++		c.weightx = 1;
++		bOk = new JButton("Ok");
++		grid.setConstraints(bOk, c);
++		bOk.addActionListener(this);
++		add(bOk);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		bCancel = new JButton("Cancel");
++		grid.setConstraints(bCancel, c);
++		bCancel.addActionListener(this);
++		add(bCancel);
++
++		closeOP = NONE;
++		
++		pack();
++	}
++	
++	/**
++	 * @param item
++	 */
++	public void setData(ActionItem item) {
++		tName.setText(item.getItemName());
++		dSchedDateEditor.setValue(item.getSchedule().getTime());
++		dSchedTimeEditor.setValue(item.getSchedule().getTime());
++		tDuration.setText(new Integer(item.getDuration()).toString());
++		dNoteDateEditor.setValue(item.getNotifyTime().getTime());
++		dNoteTimeEditor.setValue(item.getNotifyTime().getTime());
++		tNextNotfy.setText(new Integer(item.getNextNotification()).toString());
++		tDescription.setText(item.getDescription());
++	}
++
++	public int getCloseOP() {
++		return closeOP;
++	}
++	
++	/**
++	 * @return
++	 */
++	public ActionItem getData() {
++		return item;
++	}
++	
++	/**
++	 * @return
++	 */
++	private boolean checkFields() {
++		if (tName.getText().length() == 0)
++		{
++			JOptionPane.showMessageDialog(this, "A name for the task is mandatory!", "Name needed!", JOptionPane.WARNING_MESSAGE);
++			return false;
++		}
++		return true;
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent e) {
++		Object obj = e.getSource();
++		if (obj.equals(bCancel))
++		{
++			setVisible(false);
++			closeOP = CANCEL;
++		}
++		else if (obj.equals(bOk))
++		{
++			if (dirty) {
++				if (checkFields())
++				{
++					Calendar schedule = Calendar.getInstance();
++					Calendar notification = Calendar.getInstance();
++					JSpinner.DateEditor editor;
++					SpinnerDateModel dModel;
++					SpinnerDateModel tModel;
++					Calendar dCal = Calendar.getInstance();
++					Calendar tCal = Calendar.getInstance();
++					
++					editor = (JSpinner.DateEditor)dSchedDateEditor.getEditor();
++					dModel = editor.getModel();
++					dCal.setTime(dModel.getDate());
++					editor = (JSpinner.DateEditor)dSchedTimeEditor.getEditor();
++					tModel = editor.getModel();
++					tCal.setTime(tModel.getDate());
++					schedule.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
++					
++					editor = (JSpinner.DateEditor)dNoteDateEditor.getEditor();
++					dModel = editor.getModel();
++					dCal.setTime(dModel.getDate());
++					editor = (JSpinner.DateEditor)dNoteTimeEditor.getEditor();
++					tModel = editor.getModel();
++					tCal.setTime(tModel.getDate());
++					notification.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
++					
++					item = new ActionItem(tName.getText(), schedule, notification, new Integer(tDuration.getText()), new Integer(tNextNotfy.getText()), tDescription.getText());
++					setVisible(false);
++				}
++			}
++			else setVisible(false);
++			closeOP = OK;
++		}
++    }
++
++	// Listeners to detect modification of data
++	/* (non-Javadoc)
++	 * @see javax.swing.event.ChangeListener#stateChanged(javax.swing.event.ChangeEvent)
++	 */
++	public void stateChanged(ChangeEvent e) {
++		dirty = true;
++	}
++
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyPressed(java.awt.event.KeyEvent)
++	 */
++	public void keyPressed(KeyEvent e) {
++		
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyReleased(java.awt.event.KeyEvent)
++	 */
++	public void keyReleased(KeyEvent e) {
++		
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyTyped(java.awt.event.KeyEvent)
++	 */
++	public void keyTyped(KeyEvent e) {
++		dirty = true;
++	}
++}
++
+
+Copied: trunk/src/opentask/dialogs/NotifyDialog.java (from rev 35, trunk/src/opentask/NotifyDialog.java)
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-07 14:56:28 UTC (rev 35)
++++ trunk/src/opentask/dialogs/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -0,0 +1,105 @@
++/* 
++ * NotifyDialog.java
++ * OpenTask
++ *
++ * Copyright (C) 2007 Jochen A. Rassler
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ */
++package opentask.dialogs;
++
++import java.awt.Frame;
++import javax.swing.*;
++import java.awt.event.*;
++import java.util.Calendar;
++
++import opentask.data.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class NotifyDialog extends JDialog implements ActionListener{
++	public static final long serialVersionUID = 1;
++	
++	private ActionItem item;
++	private ItemList itemList;
++	
++	JButton bDone;
++	JButton bLater;
++	
++	/**
++	 * @param owner
++	 * @param title
++	 * @param itm
++	 * @param list
++	 */
++	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list, boolean remind) {
++		super(owner, title, true);
++		item = itm;
++		itemList = list;
++		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
++
++		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
++		JLabel name = new JLabel(item.getItemName());
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		JLabel date = new JLabel(item.getSchedule().getTime().toString());
++		add(date);
++		JTextArea description = new JTextArea(item.getDescription(), 5, 30);
++		description.setEditable(false);
++		add(description);
++		JSeparator separator = new JSeparator();
++		add(separator);
++		
++		JPanel pane = new JPanel();
++		pane.setLayout(new BoxLayout(pane, BoxLayout.X_AXIS));
++		bDone = new JButton("Done!");
++		bDone.addActionListener(this);
++		pane.add(bDone);
++		if (!remind)
++		{
++			bLater = new JButton("Remind me later again!");
++			bLater.addActionListener(this);
++			pane.add(bLater);
++		}
++		add(pane);
++		
++		pack();
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent e) {
++		if (e.getSource().equals(bDone)) {
++			itemList.remove(item);
++			item.setNotified(true);
++			itemList.add(item);
++			// do nothing... wait for item to be invalid
++			setVisible(false);
++		}
++		else if (e.getSource().equals(bLater)){
++			itemList.remove(item);
++			Calendar cal = Calendar.getInstance();
++			// FIXME: use real delay value (currently only default delay is used)
++			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
++			item.setNotifyTime(cal);
++			item.setNotified(false);
++			itemList.add(item);
++			setVisible(false);
++		}
++	}
++}
+
+
+

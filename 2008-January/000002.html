@@ -1,0 +1,164 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r27 - in trunk: . src/opentask
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-January/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r27%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200801311101.m0VB1isk026639%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000001.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r27 - in trunk: . src/opentask</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r27%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200801311101.m0VB1isk026639%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r27 - in trunk: . src/opentask">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 31 12:01:44 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000001.html">[Opentask-devel] r26 - in trunk: . src/opentask src/opentask/data
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-01-31 12:01:43 +0100 (Thu, 31 Jan 2008)
+New Revision: 27
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/OpenTask.java
+Log:
+added periodically autosave function
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-01-31 10:16:07 UTC (rev 26)
++++ trunk/changelog.txt	2008-01-31 11:01:43 UTC (rev 27)
+@@ -1,6 +1,7 @@
+ 0.1.3
+ =====
+ * implemented table column width calculation
++* added periodically autosave function
+ * fixed bug in notification / deletion of elapsed but un-notified tasks
+ * fixed bug in sorting order
+ 
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-01-31 10:16:07 UTC (rev 26)
++++ trunk/src/opentask/OpenTask.java	2008-01-31 11:01:43 UTC (rev 27)
+@@ -40,7 +40,7 @@
+ 	public JPanel mainPanel;
+ 	JMenuBar menuBar;
+ 	JTable table;
+-	Timer timer;
++	Timer notifyTimer, autoRepeatTimer;
+ 	
+ 	// important Data 
+ 	private boolean dirty;
+@@ -49,6 +49,7 @@
+ 	
+ 	// constants
+ 	private final int DELAY = 1000;	// milliseconds
++	private final int AUTO_REPEAT_DELAY = DELAY * 60 * 5;	// currently 5 minutes
+ 
+ 	/**
+ 	 * 
+@@ -58,9 +59,14 @@
+ 		itemList = new ItemList(model);	
+ 		if (!itemList.load())
+ 			JOptionPane.showMessageDialog(mainPanel, &quot;Error: Reading data from disk was not successful!&quot;, &quot;Disk Error&quot;, JOptionPane.ERROR_MESSAGE);
+-		TimerAction timerListener = new TimerAction(this, itemList);
+-		timer = new Timer(DELAY, timerListener);
+-		timer.start();
++
++		TimerNotifyAction timerNotifyListener = new TimerNotifyAction(this, itemList);
++		notifyTimer = new Timer(DELAY, timerNotifyListener);
++		notifyTimer.start();
++
++		TimerAutoRepeatAction timerAutoRepeatListener = new TimerAutoRepeatAction(this);
++		autoRepeatTimer = new Timer(AUTO_REPEAT_DELAY, timerAutoRepeatListener);
++		autoRepeatTimer.start();
+ 	}
+ 	
+ 	/**
+@@ -355,14 +361,14 @@
+  * @author rassler
+  *
+  */
+-class TimerAction implements ActionListener {
++class TimerNotifyAction implements ActionListener {
+ 	private OpenTask app;
+ 	private ItemList list;
+ 	/**
+ 	 * @param app
+ 	 * @param list
+ 	 */
+-	public TimerAction(Object app, ItemList list) {
++	public TimerNotifyAction(Object app, ItemList list) {
+ 		this.app = (OpenTask)app;
+ 		this.list = list;
+ 	}
+@@ -397,3 +403,23 @@
+ 		}
+ 	}
+ }
++
++/**
++ * @author rassler
++ *
++ */
++class TimerAutoRepeatAction implements ActionListener {
++	private OpenTask app;
++	
++	public TimerAutoRepeatAction(Object app) {
++		this.app = (OpenTask)app;
++	}
++
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent e) {
++		app.saveData();
++	}
++	
++}
+\ No newline at end of file
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000001.html">[Opentask-devel] r26 - in trunk: . src/opentask src/opentask/data
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

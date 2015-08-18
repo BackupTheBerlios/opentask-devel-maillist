@@ -1,0 +1,211 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r37%20-%20in%20trunk%3A%20.%20src/opentask%20src/opentask/dialogs&In-Reply-To=%3C200802081347.m18DltDd003295%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000011.html">
+   <LINK REL="Next"  HREF="000013.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r37%20-%20in%20trunk%3A%20.%20src/opentask%20src/opentask/dialogs&In-Reply-To=%3C200802081347.m18DltDd003295%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb  8 14:47:55 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000011.html">[Opentask-devel] r36 - in trunk: . src/opentask src/opentask/gui
+</A></li>
+        <LI>Next message: <A HREF="000013.html">[Opentask-devel] r38 - in trunk/src/opentask: . dialogs
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12">[ date ]</a>
+              <a href="thread.html#12">[ thread ]</a>
+              <a href="subject.html#12">[ subject ]</a>
+              <a href="author.html#12">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-08 14:47:54 +0100 (Fri, 08 Feb 2008)
+New Revision: 37
+
+Added:
+   trunk/src/opentask/dialogs/
+   trunk/src/opentask/dialogs/AboutDialog.java
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/OpenTask.java
+   trunk/src/opentask/Version.java
+Log:
+added about dialog
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/changelog.txt	2008-02-08 13:47:54 UTC (rev 37)
+@@ -1,3 +1,7 @@
++0.1.5
++=====
++* added about dialog
++
+ 0.1.4
+ =====
+ * changed notification behavior to just inform at schedule time
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/OpenTask.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -30,6 +30,7 @@
+ 
+ import opentask.data.*;
+ import opentask.gui.*;
++import opentask.dialogs.*;
+ 
+ /**
+  * @author rassler
+@@ -137,7 +138,10 @@
+         menuBar.add(menu);
+ 
+         // About Menu
+-        menu = new JMenu(&quot;About&quot;);
++        menu = new JMenu(&quot;Help&quot;);
++        menuItem = new JMenuItem(&quot;About&quot;);
++        menuItem.addActionListener(new AboutDialogAction());
++        menu.add(menuItem);
+         menuBar.add(menu);
+ 	}
+ 	
+@@ -393,6 +397,18 @@
+ }
+ 
+ 
++class AboutDialogAction implements ActionListener
++{
++	public void actionPerformed(ActionEvent e)
++	{
++		AboutDialog about = new AboutDialog(null);
++		about.setVisible(true);
++	}
++	
++}
++
++
++
+ /**
+  * @author rassler
+  *
+
+Modified: trunk/src/opentask/Version.java
+===================================================================
+--- trunk/src/opentask/Version.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/Version.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -10,7 +10,7 @@
+ public class Version {
+ 	public static int major = 0;
+ 	public static int minor = 1;
+-	public static int buglevel = 4;
++	public static int buglevel = 5;
+ 	
+ 	public static String getVersion() {
+ 		return (new Integer(major)).toString() + &quot;.&quot; + (new Integer(minor)).toString() + &quot;.&quot; + (new Integer(buglevel)).toString();
+
+Added: trunk/src/opentask/dialogs/AboutDialog.java
+===================================================================
+--- trunk/src/opentask/dialogs/AboutDialog.java	2008-02-07 15:15:56 UTC (rev 36)
++++ trunk/src/opentask/dialogs/AboutDialog.java	2008-02-08 13:47:54 UTC (rev 37)
+@@ -0,0 +1,53 @@
++/**
++ * 
++ */
++package opentask.dialogs;
++
++import java.awt.Frame;
++import java.awt.event.ActionEvent;
++import java.awt.event.ActionListener;
++
++import javax.swing.BoxLayout;
++import javax.swing.JButton;
++import javax.swing.JDialog;
++import javax.swing.JLabel;
++import javax.swing.JPanel;
++
++import opentask.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class AboutDialog extends JDialog implements ActionListener {
++
++	public AboutDialog(Frame owner)
++	{
++		super(owner, &quot;OpenTask&quot; + Version.getVersion(), true);
++
++		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
++		JLabel name = new JLabel(&quot;OpenTask &quot; + Version.getVersion());
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		name = new JLabel(&quot;(c) 2008, Jochen Rassler\n\n&quot;);
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		name = new JLabel(&quot;This software is licensed under the GNU GPL Version 2.&quot;);
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++
++		JButton bDone = new JButton(&quot;Done!&quot;);
++		bDone.addActionListener(this);
++		add(bDone);
++		
++		pack();
++}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent arg0) {
++		setVisible(false);
++	}
++
++}
+
+
+Property changes on: trunk/src/opentask/dialogs/AboutDialog.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000011.html">[Opentask-devel] r36 - in trunk: . src/opentask src/opentask/gui
+</A></li>
+	<LI>Next message: <A HREF="000013.html">[Opentask-devel] r38 - in trunk/src/opentask: . dialogs
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#12">[ date ]</a>
+              <a href="thread.html#12">[ thread ]</a>
+              <a href="subject.html#12">[ subject ]</a>
+              <a href="author.html#12">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

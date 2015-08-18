@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r31 - trunk/src/opentask/data
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r31%20-%20trunk/src/opentask/data&In-Reply-To=%3C200802071241.m17Cfv5i030088%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000005.html">
+   <LINK REL="Next"  HREF="000007.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r31 - trunk/src/opentask/data</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r31%20-%20trunk/src/opentask/data&In-Reply-To=%3C200802071241.m17Cfv5i030088%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r31 - trunk/src/opentask/data">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb  7 13:41:57 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000005.html">[Opentask-devel] r30 - in trunk: . src/opentask
+</A></li>
+        <LI>Next message: <A HREF="000007.html">[Opentask-devel] r32 - in trunk/src/opentask: . gui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-07 13:41:57 +0100 (Thu, 07 Feb 2008)
+New Revision: 31
+
+Removed:
+   trunk/src/opentask/data/TableColumnPacker.java
+Log:
+restructuring
+
+Deleted: trunk/src/opentask/data/TableColumnPacker.java
+===================================================================
+--- trunk/src/opentask/data/TableColumnPacker.java	2008-02-07 11:48:18 UTC (rev 30)
++++ trunk/src/opentask/data/TableColumnPacker.java	2008-02-07 12:41:57 UTC (rev 31)
+@@ -1,63 +0,0 @@
+-/**
+- * 
+- */
+-package opentask.data;
+-
+-import javax.swing.*;
+-import javax.swing.table.*;
+-import java.awt.Component;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class TableColumnPacker {
+-
+-	private JTable table;
+-	
+-	public TableColumnPacker(JTable table)
+-	{
+-		this.table = table;
+-	}
+-	
+-	public void packColumns()
+-	{
+-	    for (int c = 0; c &lt; table.getColumnCount(); ++c) 
+-	        packColumn(c, 2);
+-	}
+-	
+-	private void packColumn(int vColIndex, int margin)
+-	{
+-//	    TableModel model = table.getModel();
+-	    DefaultTableColumnModel colModel = (DefaultTableColumnModel)table.getColumnModel();
+-	    TableColumn col = colModel.getColumn(vColIndex);
+-	    int width = 0;
+-
+-	    // Get width of column header
+-	    TableCellRenderer renderer = col.getHeaderRenderer();
+-	    if (renderer == null) {
+-	        renderer = table.getTableHeader().getDefaultRenderer();
+-	    }
+-	    Component comp = renderer.getTableCellRendererComponent(
+-	        table, col.getHeaderValue(), false, false, 0, 0);
+-	    width = comp.getPreferredSize().width;
+-
+-	    // Get maximum width of column data
+-	    for (int r = 0; r &lt; table.getRowCount(); ++r) 
+-	    {
+-	        renderer = table.getCellRenderer(r, vColIndex);
+-	        comp = renderer.getTableCellRendererComponent(
+-	            table, table.getValueAt(r, vColIndex), false, false, r, vColIndex);
+-	        width = Math.max(width, comp.getPreferredSize().width);
+-	    }
+-
+-	    // Add margin
+-	    width += 2*margin;
+-
+-	    // Set the width
+-	    col.setPreferredWidth(width);
+-		
+-	}
+-}
+-
+-
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000005.html">[Opentask-devel] r30 - in trunk: . src/opentask
+</A></li>
+	<LI>Next message: <A HREF="000007.html">[Opentask-devel] r32 - in trunk/src/opentask: . gui
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r25 - in trunk: . src/opentask src/opentask/data
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-January/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r25%20-%20in%20trunk%3A%20.%20src/opentask%20src/opentask/data&In-Reply-To=%3C200801310948.m0V9mPBh019408%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000001.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r25 - in trunk: . src/opentask src/opentask/data</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r25%20-%20in%20trunk%3A%20.%20src/opentask%20src/opentask/data&In-Reply-To=%3C200801310948.m0V9mPBh019408%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r25 - in trunk: . src/opentask src/opentask/data">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Thu Jan 31 10:48:25 CET 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000001.html">[Opentask-devel] r26 - in trunk: . src/opentask src/opentask/data
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#0">[ date ]</a>
+              <a href="thread.html#0">[ thread ]</a>
+              <a href="subject.html#0">[ subject ]</a>
+              <a href="author.html#0">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-01-31 10:48:25 +0100 (Thu, 31 Jan 2008)
+New Revision: 25
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/OpenTask.java
+   trunk/src/opentask/data/ItemListModelComparator.java
+Log:
+fixed bug in sorting order
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-01-30 17:06:32 UTC (rev 24)
++++ trunk/changelog.txt	2008-01-31 09:48:25 UTC (rev 25)
+@@ -1,6 +1,7 @@
+ 0.1.3
+ =====
+ * fixed bug in notification / deletion of elapsed but un-notified tasks
++* fixed bug in sorting order
+ 
+ 0.1.2
+ =====
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-01-30 17:06:32 UTC (rev 24)
++++ trunk/src/opentask/OpenTask.java	2008-01-31 09:48:25 UTC (rev 25)
+@@ -128,7 +128,7 @@
+ 		mainPanel.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+ 		
+ 		table = new JTable(model);
+-		table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
++//		table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+ 		table.setRowHeight(23);
+ 		JScrollPane scrollPane = new JScrollPane(table);
+ 		table.setFillsViewportHeight(true);
+@@ -383,4 +383,4 @@
+ 			}
+ 		}
+ 	}
+-}
+\ No newline at end of file
++}
+
+Modified: trunk/src/opentask/data/ItemListModelComparator.java
+===================================================================
+--- trunk/src/opentask/data/ItemListModelComparator.java	2008-01-30 17:06:32 UTC (rev 24)
++++ trunk/src/opentask/data/ItemListModelComparator.java	2008-01-31 09:48:25 UTC (rev 25)
+@@ -44,7 +44,9 @@
+ 		// Task date
+ 		for (int i = 0; i &lt; 3; ++i) {
+ 			date1[i] = token1.nextToken();
++			if (date1[i].length() == 1) date1[i] = &quot;0&quot; + date1[i];
+ 			date2[i] = token2.nextToken();
++			if (date2[i].length() == 1) date2[i] = &quot;0&quot; + date2[i];
+ 		}
+ 		comp = date1[2].compareTo(date2[2]);
+ 		if (comp != 0) return comp;
+@@ -74,7 +76,9 @@
+ 		date2 = new String[3];
+ 		for (int i = 0; i &lt; 3; ++i) {
+ 			date1[i] = token1.nextToken();
++			if (date1[i].length() == 1) date1[i] = &quot;0&quot; + date1[i];
+ 			date2[i] = token2.nextToken();
++			if (date2[i].length() == 1) date2[i] = &quot;0&quot; + date2[i];
+ 		}
+ 		comp = date1[2].compareTo(date2[2]);
+ 		if (comp != 0) return comp;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000001.html">[Opentask-devel] r26 - in trunk: . src/opentask src/opentask/data
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#0">[ date ]</a>
+              <a href="thread.html#0">[ thread ]</a>
+              <a href="subject.html#0">[ subject ]</a>
+              <a href="author.html#0">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

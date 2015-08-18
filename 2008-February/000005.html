@@ -1,0 +1,178 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r30 - in trunk: . src/opentask
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r30%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200802071148.m17BmL2i005012%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000004.html">
+   <LINK REL="Next"  HREF="000006.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r30 - in trunk: . src/opentask</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r30%20-%20in%20trunk%3A%20.%20src/opentask&In-Reply-To=%3C200802071148.m17BmL2i005012%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r30 - in trunk: . src/opentask">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Thu Feb  7 12:48:21 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000004.html">[Opentask-devel] r29 - in trunk: . src/opentask
+</A></li>
+        <LI>Next message: <A HREF="000006.html">[Opentask-devel] r31 - trunk/src/opentask/data
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5">[ date ]</a>
+              <a href="thread.html#5">[ thread ]</a>
+              <a href="subject.html#5">[ subject ]</a>
+              <a href="author.html#5">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-07 12:48:18 +0100 (Thu, 07 Feb 2008)
+New Revision: 30
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/NotifyDialog.java
+   trunk/src/opentask/OpenTask.java
+   trunk/src/opentask/Version.java
+Log:
+fixed notification bug and minor code cleanup
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/changelog.txt	2008-02-07 11:48:18 UTC (rev 30)
+@@ -1,3 +1,7 @@
++0.1.4
++=====
++* fixed bug in notification behaviour
++
+ 0.1.3
+ =====
+ * implemented table column width calculation
+
+Modified: trunk/src/opentask/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/NotifyDialog.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -86,14 +86,15 @@
+ 			item.setNotified(true);
+ 			itemList.add(item);
+ 			// do nothing... wait for item to be invalid
+-//			itemList.remove(item);
+ 			setVisible(false);
+ 		}
+ 		else if (e.getSource().equals(bLater)){
+ 			itemList.remove(item);
+ 			Calendar cal = Calendar.getInstance();
++			// FIXME: use real delay value (currently only default delay is used)
+ 			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
+ 			item.setNotifyTime(cal);
++			item.setNotified(false);
+ 			itemList.add(item);
+ 			setVisible(false);
+ 		}
+
+Modified: trunk/src/opentask/OpenTask.java
+===================================================================
+--- trunk/src/opentask/OpenTask.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/OpenTask.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -50,8 +50,9 @@
+ 	private ItemListModel model;
+ 	
+ 	// constants
+-	private final int DELAY = 1000;	// milliseconds
+-	private final int AUTO_REPEAT_DELAY = DELAY * 60 * 5;	// currently 5 minutes
++	private final int SECOND = 1000;	// milliseconds
++	private final int DELAY = 5 * SECOND; 
++	private final int AUTO_REPEAT_DELAY = SECOND * 60 * 5;	// currently 5 minutes
+ 
+ 	/**
+ 	 * 
+@@ -415,23 +416,26 @@
+ 		while (it.hasNext()) {
+ 			ActionItem item = it.next();
+ 			Calendar notify = item.getNotifyTime();
+-			if (notify.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+-					&amp;&amp; notify.get(Calendar.MONTH) == now.get(Calendar.MONTH)
+-					&amp;&amp; notify.get(Calendar.DAY_OF_MONTH) == now.get(Calendar.DAY_OF_MONTH)
+-					&amp;&amp; notify.get(Calendar.HOUR_OF_DAY) == now.get(Calendar.HOUR_OF_DAY)
+-					&amp;&amp; notify.get(Calendar.MINUTE) == now.get(Calendar.MINUTE)
+-					)
++			if (notify.getTimeInMillis() &lt; now.getTimeInMillis() || notify.getTimeInMillis() == now.getTimeInMillis())
+ 			{
+ 				if (item.isNotified() == false)
++				{
++					item.setNotified(true);
+ 					app.notifyTask(item);
++					break;
++				}
+ 			}
+-			Calendar schedule = item.getSchedule();
+-			if (schedule.getTimeInMillis() &lt; now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++			if (item.isNotified() == true)
+ 			{
+-				// notify, although time is over
+-				app.notifyTask(item);
+-				// delete item anyway
+-				list.remove(item);
++				Calendar schedule = item.getSchedule();
++				if (schedule.getTimeInMillis() &lt; now.getTimeInMillis() || schedule.getTimeInMillis() == now.getTimeInMillis())
++				{
++					// notify, although time is over
++					app.notifyTask(item);
++					// delete item anyway
++					list.remove(item);
++					break;
++				}
+ 			}
+ 		}
+ 	}
+
+Modified: trunk/src/opentask/Version.java
+===================================================================
+--- trunk/src/opentask/Version.java	2008-02-01 18:23:20 UTC (rev 29)
++++ trunk/src/opentask/Version.java	2008-02-07 11:48:18 UTC (rev 30)
+@@ -10,7 +10,7 @@
+ public class Version {
+ 	public static int major = 0;
+ 	public static int minor = 1;
+-	public static int buglevel = 3;
++	public static int buglevel = 4;
+ 	
+ 	public static String getVersion() {
+ 		return (new Integer(major)).toString() + &quot;.&quot; + (new Integer(minor)).toString() + &quot;.&quot; + (new Integer(buglevel)).toString();
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000004.html">[Opentask-devel] r29 - in trunk: . src/opentask
+</A></li>
+	<LI>Next message: <A HREF="000006.html">[Opentask-devel] r31 - trunk/src/opentask/data
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#5">[ date ]</a>
+              <a href="thread.html#5">[ thread ]</a>
+              <a href="subject.html#5">[ subject ]</a>
+              <a href="author.html#5">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

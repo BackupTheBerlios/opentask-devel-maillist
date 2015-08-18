@@ -1,0 +1,960 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r38 - in trunk/src/opentask: . dialogs
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r38%20-%20in%20trunk/src/opentask%3A%20.%20dialogs&In-Reply-To=%3C200802081349.m18DnkGW003421%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000012.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r38 - in trunk/src/opentask: . dialogs</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r38%20-%20in%20trunk/src/opentask%3A%20.%20dialogs&In-Reply-To=%3C200802081349.m18DnkGW003421%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r38 - in trunk/src/opentask: . dialogs">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb  8 14:49:46 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000012.html">[Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13">[ date ]</a>
+              <a href="thread.html#13">[ thread ]</a>
+              <a href="subject.html#13">[ subject ]</a>
+              <a href="author.html#13">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-08 14:49:46 +0100 (Fri, 08 Feb 2008)
+New Revision: 38
+
+Added:
+   trunk/src/opentask/dialogs/ItemDialog.java
+   trunk/src/opentask/dialogs/NotifyDialog.java
+Removed:
+   trunk/src/opentask/ItemDialog.java
+   trunk/src/opentask/NotifyDialog.java
+Log:
+refactoring
+
+Deleted: trunk/src/opentask/ItemDialog.java
+===================================================================
+--- trunk/src/opentask/ItemDialog.java	2008-02-08 13:47:54 UTC (rev 37)
++++ trunk/src/opentask/ItemDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -1,327 +0,0 @@
+-/* 
+- * ItemDialog.java
+- * OpenTask
+- *
+- * Copyright (C) 2007 Jochen A. Rassler
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+- */
+-package opentask;
+-
+-import java.util.*;
+-
+-import javax.swing.*;
+-import javax.swing.border.*;
+-import javax.swing.event.*;
+-import java.awt.event.*;
+-import java.awt.*;
+-
+-import opentask.data.*;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class ItemDialog extends JDialog implements ActionListener, ChangeListener, KeyListener {
+-	static final long serialVersionUID = 1;
+-	private ActionItem item;
+-	private boolean dirty;
+-	private int closeOP;
+-	
+-	public static int NONE = 0;
+-	public static int OK = 1;
+-	public static int CANCEL = -1;
+-	
+-	// GUI fields
+-	private JTextField tName;
+-	private JSpinner dSchedDateEditor;
+-	private JSpinner dSchedTimeEditor;
+-	private JTextField tDuration;
+-	private JSpinner dNoteDateEditor;
+-	private JSpinner dNoteTimeEditor;
+-	private JTextField tNextNotfy;
+-	private JTextArea tDescription;
+-	private JButton bCancel;
+-	private JButton bOk;
+-	
+-	/**
+-	 * @param owner
+-	 * @param title
+-	 */
+-	public ItemDialog(Frame owner, String title)
+-	{
+-		super(owner, title, true);
+-		dirty = false;
+-		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+-		
+-		GridBagLayout grid = new GridBagLayout();
+-		GridBagConstraints c = new GridBagConstraints();
+-		c.fill = GridBagConstraints.BOTH;
+-		c.insets = new Insets(5,5,5,5);
+-		this.setLayout(grid);
+-		
+-		Calendar past = Calendar.getInstance();
+-		past.add(Calendar.MONDAY, -1);
+-		Calendar now = Calendar.getInstance();
+-
+-		// first row : task name
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lName = new JLabel(&quot;Task Name&quot;);
+-		grid.setConstraints(lName, c);
+-		add(lName);
+-		//c.weightx = 2;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tName = new JTextField(15);
+-		grid.setConstraints(tName, c);
+-		tName.addKeyListener(this);
+-		add(tName);
+-		// second row : schedule label
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lSchedule = new JLabel(&quot;Schedule&quot;);
+-		grid.setConstraints(lSchedule, c);
+-		add(lSchedule);
+-		// third row : schedule fields
+-		c.weightx = 1;
+-		c.gridwidth = 1;
+-		JLabel lSchedDate = new JLabel(&quot;Date&quot;);
+-		grid.setConstraints(lSchedDate, c);
+-		add(lSchedDate);
+-			// Schedule Date Editor
+-		dSchedDateEditor = new JSpinner();
+-		dSchedDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
+-		dSchedDateEditor.setEditor(new JSpinner.DateEditor(dSchedDateEditor, &quot;dd.MM.yyyy&quot;));
+-		grid.setConstraints(dSchedDateEditor, c);
+-		dSchedDateEditor.addChangeListener(this);
+-		add(dSchedDateEditor);
+-		
+-		JLabel lSchedTime = new JLabel(&quot;Time&quot;);
+-		grid.setConstraints(lSchedTime, c);
+-		add(lSchedTime);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-
+-		dSchedTimeEditor = new JSpinner();
+-		dSchedTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
+-		dSchedTimeEditor.setEditor(new JSpinner.DateEditor(dSchedTimeEditor, &quot;HH:mm&quot;));
+-		grid.setConstraints(dSchedTimeEditor, c);
+-		dSchedTimeEditor.addChangeListener(this);
+-		add(dSchedTimeEditor);
+-		// fourth row : duration
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lDuration = new JLabel(&quot;Duration&quot;);
+-		grid.setConstraints(lDuration, c);
+-		add(lDuration);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tDuration = new JTextField(5);
+-		grid.setConstraints(tDuration, c);
+-		tDuration.addKeyListener(this);
+-		add(tDuration);
+-		// fifth row : notification label
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lNotification = new JLabel(&quot;Notification&quot;);
+-		grid.setConstraints(lNotification, c);
+-		add(lNotification);
+-		// sixth row : notification fields
+-		c.weightx = 1;
+-		c.gridwidth = 1;
+-		JLabel lNotDate = new JLabel(&quot;Date&quot;);
+-		grid.setConstraints(lNotDate, c);
+-		add(lNotDate);
+-			// Notification Date Editor
+-		dNoteDateEditor = new JSpinner();
+-		dNoteDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
+-		dNoteDateEditor.setEditor(new JSpinner.DateEditor(dNoteDateEditor, &quot;dd.MM.yyyy&quot;));
+-		grid.setConstraints(dNoteDateEditor, c);
+-		dNoteDateEditor.addChangeListener(this);
+-		add(dNoteDateEditor);
+-
+-		JLabel lNotTime = new JLabel(&quot;Time&quot;);
+-		grid.setConstraints(lNotTime, c);
+-		add(lNotTime);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-
+-		dNoteTimeEditor = new JSpinner();
+-		dNoteTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
+-		dNoteTimeEditor.setEditor(new JSpinner.DateEditor(dNoteTimeEditor, &quot;HH:mm&quot;));
+-		grid.setConstraints(dNoteTimeEditor, c);
+-		dNoteTimeEditor.addChangeListener(this);
+-		add(dNoteTimeEditor);
+-		// seventh row : nex Notification
+-		c.weightx = 2;
+-		c.gridwidth = 1;
+-		JLabel lNextNotify = new JLabel(&quot;Next Notification&quot;);
+-		grid.setConstraints(lNextNotify, c);
+-		add(lNextNotify);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tNextNotfy = new JTextField(5);
+-		grid.setConstraints(tNextNotfy, c);
+-		tNextNotfy.addKeyListener(this);
+-		add(tNextNotfy);
+-		// eightth row : description
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		JLabel lDescription = new JLabel(&quot;Description&quot;);
+-		grid.setConstraints(lDescription, c);
+-		add(lDescription);
+-		// nineth row : description field
+-		c.weightx = 4;
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		tDescription = new JTextArea(5,30);
+-		tDescription.setBorder(new EtchedBorder());
+-		tDescription.setLineWrap(true);
+-		grid.setConstraints(tDescription, c);
+-		tDescription.addKeyListener(this);
+-		add(tDescription);
+-		
+-		// tenth row: buttons
+-		c.weightx = 2;
+-		c.gridwidth = 2;
+-		JLabel lNone = new JLabel();
+-		grid.setConstraints(lNone, c);
+-		add(lNone);
+-		c.weightx = 1;
+-		bOk = new JButton(&quot;Ok&quot;);
+-		grid.setConstraints(bOk, c);
+-		bOk.addActionListener(this);
+-		add(bOk);
+-		c.gridwidth = GridBagConstraints.REMAINDER;
+-		bCancel = new JButton(&quot;Cancel&quot;);
+-		grid.setConstraints(bCancel, c);
+-		bCancel.addActionListener(this);
+-		add(bCancel);
+-
+-		closeOP = NONE;
+-		
+-		pack();
+-	}
+-	
+-	/**
+-	 * @param item
+-	 */
+-	public void setData(ActionItem item) {
+-		tName.setText(item.getItemName());
+-		dSchedDateEditor.setValue(item.getSchedule().getTime());
+-		dSchedTimeEditor.setValue(item.getSchedule().getTime());
+-		tDuration.setText(new Integer(item.getDuration()).toString());
+-		dNoteDateEditor.setValue(item.getNotifyTime().getTime());
+-		dNoteTimeEditor.setValue(item.getNotifyTime().getTime());
+-		tNextNotfy.setText(new Integer(item.getNextNotification()).toString());
+-		tDescription.setText(item.getDescription());
+-	}
+-
+-	public int getCloseOP() {
+-		return closeOP;
+-	}
+-	
+-	/**
+-	 * @return
+-	 */
+-	public ActionItem getData() {
+-		return item;
+-	}
+-	
+-	/**
+-	 * @return
+-	 */
+-	private boolean checkFields() {
+-		if (tName.getText().length() == 0)
+-		{
+-			JOptionPane.showMessageDialog(this, &quot;A name for the task is mandatory!&quot;, &quot;Name needed!&quot;, JOptionPane.WARNING_MESSAGE);
+-			return false;
+-		}
+-		return true;
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+-	 */
+-	public void actionPerformed(ActionEvent e) {
+-		Object obj = e.getSource();
+-		if (obj.equals(bCancel))
+-		{
+-			setVisible(false);
+-			closeOP = CANCEL;
+-		}
+-		else if (obj.equals(bOk))
+-		{
+-			if (dirty) {
+-				if (checkFields())
+-				{
+-					Calendar schedule = Calendar.getInstance();
+-					Calendar notification = Calendar.getInstance();
+-					JSpinner.DateEditor editor;
+-					SpinnerDateModel dModel;
+-					SpinnerDateModel tModel;
+-					Calendar dCal = Calendar.getInstance();
+-					Calendar tCal = Calendar.getInstance();
+-					
+-					editor = (JSpinner.DateEditor)dSchedDateEditor.getEditor();
+-					dModel = editor.getModel();
+-					dCal.setTime(dModel.getDate());
+-					editor = (JSpinner.DateEditor)dSchedTimeEditor.getEditor();
+-					tModel = editor.getModel();
+-					tCal.setTime(tModel.getDate());
+-					schedule.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
+-					
+-					editor = (JSpinner.DateEditor)dNoteDateEditor.getEditor();
+-					dModel = editor.getModel();
+-					dCal.setTime(dModel.getDate());
+-					editor = (JSpinner.DateEditor)dNoteTimeEditor.getEditor();
+-					tModel = editor.getModel();
+-					tCal.setTime(tModel.getDate());
+-					notification.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
+-					
+-					item = new ActionItem(tName.getText(), schedule, notification, new Integer(tDuration.getText()), new Integer(tNextNotfy.getText()), tDescription.getText());
+-					setVisible(false);
+-				}
+-			}
+-			else setVisible(false);
+-			closeOP = OK;
+-		}
+-    }
+-
+-	// Listeners to detect modification of data
+-	/* (non-Javadoc)
+-	 * @see javax.swing.event.ChangeListener#stateChanged(javax.swing.event.ChangeEvent)
+-	 */
+-	public void stateChanged(ChangeEvent e) {
+-		dirty = true;
+-	}
+-
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyPressed(java.awt.event.KeyEvent)
+-	 */
+-	public void keyPressed(KeyEvent e) {
+-		
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyReleased(java.awt.event.KeyEvent)
+-	 */
+-	public void keyReleased(KeyEvent e) {
+-		
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.KeyListener#keyTyped(java.awt.event.KeyEvent)
+-	 */
+-	public void keyTyped(KeyEvent e) {
+-		dirty = true;
+-	}
+-}
+-
+
+Deleted: trunk/src/opentask/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-08 13:47:54 UTC (rev 37)
++++ trunk/src/opentask/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -1,105 +0,0 @@
+-/* 
+- * NotifyDialog.java
+- * OpenTask
+- *
+- * Copyright (C) 2007 Jochen A. Rassler
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+- */
+-package opentask;
+-
+-import java.awt.Frame;
+-import javax.swing.*;
+-import java.awt.event.*;
+-import java.util.Calendar;
+-
+-import opentask.data.*;
+-
+-/**
+- * @author rassler
+- *
+- */
+-public class NotifyDialog extends JDialog implements ActionListener{
+-	public static final long serialVersionUID = 1;
+-	
+-	private ActionItem item;
+-	private ItemList itemList;
+-	
+-	JButton bDone;
+-	JButton bLater;
+-	
+-	/**
+-	 * @param owner
+-	 * @param title
+-	 * @param itm
+-	 * @param list
+-	 */
+-	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list, boolean remind) {
+-		super(owner, title, true);
+-		item = itm;
+-		itemList = list;
+-		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+-
+-		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
+-		JLabel name = new JLabel(item.getItemName());
+-		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+-		add(name);
+-		JLabel date = new JLabel(item.getSchedule().getTime().toString());
+-		add(date);
+-		JTextArea description = new JTextArea(item.getDescription(), 5, 30);
+-		description.setEditable(false);
+-		add(description);
+-		JSeparator separator = new JSeparator();
+-		add(separator);
+-		
+-		JPanel pane = new JPanel();
+-		pane.setLayout(new BoxLayout(pane, BoxLayout.X_AXIS));
+-		bDone = new JButton(&quot;Done!&quot;);
+-		bDone.addActionListener(this);
+-		pane.add(bDone);
+-		if (!remind)
+-		{
+-			bLater = new JButton(&quot;Remind me later again!&quot;);
+-			bLater.addActionListener(this);
+-			pane.add(bLater);
+-		}
+-		add(pane);
+-		
+-		pack();
+-	}
+-	
+-	/* (non-Javadoc)
+-	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
+-	 */
+-	public void actionPerformed(ActionEvent e) {
+-		if (e.getSource().equals(bDone)) {
+-			itemList.remove(item);
+-			item.setNotified(true);
+-			itemList.add(item);
+-			// do nothing... wait for item to be invalid
+-			setVisible(false);
+-		}
+-		else if (e.getSource().equals(bLater)){
+-			itemList.remove(item);
+-			Calendar cal = Calendar.getInstance();
+-			// FIXME: use real delay value (currently only default delay is used)
+-			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
+-			item.setNotifyTime(cal);
+-			item.setNotified(false);
+-			itemList.add(item);
+-			setVisible(false);
+-		}
+-	}
+-}
+
+Copied: trunk/src/opentask/dialogs/ItemDialog.java (from rev 32, trunk/src/opentask/ItemDialog.java)
+===================================================================
+--- trunk/src/opentask/ItemDialog.java	2008-02-07 12:42:17 UTC (rev 32)
++++ trunk/src/opentask/dialogs/ItemDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -0,0 +1,327 @@
++/* 
++ * ItemDialog.java
++ * OpenTask
++ *
++ * Copyright (C) 2007 Jochen A. Rassler
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ */
++package opentask.dialogs;
++
++import java.util.*;
++
++import javax.swing.*;
++import javax.swing.border.*;
++import javax.swing.event.*;
++import java.awt.event.*;
++import java.awt.*;
++
++import opentask.data.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class ItemDialog extends JDialog implements ActionListener, ChangeListener, KeyListener {
++	static final long serialVersionUID = 1;
++	private ActionItem item;
++	private boolean dirty;
++	private int closeOP;
++	
++	public static int NONE = 0;
++	public static int OK = 1;
++	public static int CANCEL = -1;
++	
++	// GUI fields
++	private JTextField tName;
++	private JSpinner dSchedDateEditor;
++	private JSpinner dSchedTimeEditor;
++	private JTextField tDuration;
++	private JSpinner dNoteDateEditor;
++	private JSpinner dNoteTimeEditor;
++	private JTextField tNextNotfy;
++	private JTextArea tDescription;
++	private JButton bCancel;
++	private JButton bOk;
++	
++	/**
++	 * @param owner
++	 * @param title
++	 */
++	public ItemDialog(Frame owner, String title)
++	{
++		super(owner, title, true);
++		dirty = false;
++		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
++		
++		GridBagLayout grid = new GridBagLayout();
++		GridBagConstraints c = new GridBagConstraints();
++		c.fill = GridBagConstraints.BOTH;
++		c.insets = new Insets(5,5,5,5);
++		this.setLayout(grid);
++		
++		Calendar past = Calendar.getInstance();
++		past.add(Calendar.MONDAY, -1);
++		Calendar now = Calendar.getInstance();
++
++		// first row : task name
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lName = new JLabel(&quot;Task Name&quot;);
++		grid.setConstraints(lName, c);
++		add(lName);
++		//c.weightx = 2;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tName = new JTextField(15);
++		grid.setConstraints(tName, c);
++		tName.addKeyListener(this);
++		add(tName);
++		// second row : schedule label
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lSchedule = new JLabel(&quot;Schedule&quot;);
++		grid.setConstraints(lSchedule, c);
++		add(lSchedule);
++		// third row : schedule fields
++		c.weightx = 1;
++		c.gridwidth = 1;
++		JLabel lSchedDate = new JLabel(&quot;Date&quot;);
++		grid.setConstraints(lSchedDate, c);
++		add(lSchedDate);
++			// Schedule Date Editor
++		dSchedDateEditor = new JSpinner();
++		dSchedDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
++		dSchedDateEditor.setEditor(new JSpinner.DateEditor(dSchedDateEditor, &quot;dd.MM.yyyy&quot;));
++		grid.setConstraints(dSchedDateEditor, c);
++		dSchedDateEditor.addChangeListener(this);
++		add(dSchedDateEditor);
++		
++		JLabel lSchedTime = new JLabel(&quot;Time&quot;);
++		grid.setConstraints(lSchedTime, c);
++		add(lSchedTime);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++
++		dSchedTimeEditor = new JSpinner();
++		dSchedTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
++		dSchedTimeEditor.setEditor(new JSpinner.DateEditor(dSchedTimeEditor, &quot;HH:mm&quot;));
++		grid.setConstraints(dSchedTimeEditor, c);
++		dSchedTimeEditor.addChangeListener(this);
++		add(dSchedTimeEditor);
++		// fourth row : duration
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lDuration = new JLabel(&quot;Duration&quot;);
++		grid.setConstraints(lDuration, c);
++		add(lDuration);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tDuration = new JTextField(5);
++		grid.setConstraints(tDuration, c);
++		tDuration.addKeyListener(this);
++		add(tDuration);
++		// fifth row : notification label
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lNotification = new JLabel(&quot;Notification&quot;);
++		grid.setConstraints(lNotification, c);
++		add(lNotification);
++		// sixth row : notification fields
++		c.weightx = 1;
++		c.gridwidth = 1;
++		JLabel lNotDate = new JLabel(&quot;Date&quot;);
++		grid.setConstraints(lNotDate, c);
++		add(lNotDate);
++			// Notification Date Editor
++		dNoteDateEditor = new JSpinner();
++		dNoteDateEditor.setModel(new SpinnerDateModel(now.getTime(), past.getTime(), null, Calendar.YEAR));
++		dNoteDateEditor.setEditor(new JSpinner.DateEditor(dNoteDateEditor, &quot;dd.MM.yyyy&quot;));
++		grid.setConstraints(dNoteDateEditor, c);
++		dNoteDateEditor.addChangeListener(this);
++		add(dNoteDateEditor);
++
++		JLabel lNotTime = new JLabel(&quot;Time&quot;);
++		grid.setConstraints(lNotTime, c);
++		add(lNotTime);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++
++		dNoteTimeEditor = new JSpinner();
++		dNoteTimeEditor.setModel(new SpinnerDateModel(now.getTime(), null, null, Calendar.MINUTE));
++		dNoteTimeEditor.setEditor(new JSpinner.DateEditor(dNoteTimeEditor, &quot;HH:mm&quot;));
++		grid.setConstraints(dNoteTimeEditor, c);
++		dNoteTimeEditor.addChangeListener(this);
++		add(dNoteTimeEditor);
++		// seventh row : nex Notification
++		c.weightx = 2;
++		c.gridwidth = 1;
++		JLabel lNextNotify = new JLabel(&quot;Next Notification&quot;);
++		grid.setConstraints(lNextNotify, c);
++		add(lNextNotify);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tNextNotfy = new JTextField(5);
++		grid.setConstraints(tNextNotfy, c);
++		tNextNotfy.addKeyListener(this);
++		add(tNextNotfy);
++		// eightth row : description
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		JLabel lDescription = new JLabel(&quot;Description&quot;);
++		grid.setConstraints(lDescription, c);
++		add(lDescription);
++		// nineth row : description field
++		c.weightx = 4;
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		tDescription = new JTextArea(5,30);
++		tDescription.setBorder(new EtchedBorder());
++		tDescription.setLineWrap(true);
++		grid.setConstraints(tDescription, c);
++		tDescription.addKeyListener(this);
++		add(tDescription);
++		
++		// tenth row: buttons
++		c.weightx = 2;
++		c.gridwidth = 2;
++		JLabel lNone = new JLabel();
++		grid.setConstraints(lNone, c);
++		add(lNone);
++		c.weightx = 1;
++		bOk = new JButton(&quot;Ok&quot;);
++		grid.setConstraints(bOk, c);
++		bOk.addActionListener(this);
++		add(bOk);
++		c.gridwidth = GridBagConstraints.REMAINDER;
++		bCancel = new JButton(&quot;Cancel&quot;);
++		grid.setConstraints(bCancel, c);
++		bCancel.addActionListener(this);
++		add(bCancel);
++
++		closeOP = NONE;
++		
++		pack();
++	}
++	
++	/**
++	 * @param item
++	 */
++	public void setData(ActionItem item) {
++		tName.setText(item.getItemName());
++		dSchedDateEditor.setValue(item.getSchedule().getTime());
++		dSchedTimeEditor.setValue(item.getSchedule().getTime());
++		tDuration.setText(new Integer(item.getDuration()).toString());
++		dNoteDateEditor.setValue(item.getNotifyTime().getTime());
++		dNoteTimeEditor.setValue(item.getNotifyTime().getTime());
++		tNextNotfy.setText(new Integer(item.getNextNotification()).toString());
++		tDescription.setText(item.getDescription());
++	}
++
++	public int getCloseOP() {
++		return closeOP;
++	}
++	
++	/**
++	 * @return
++	 */
++	public ActionItem getData() {
++		return item;
++	}
++	
++	/**
++	 * @return
++	 */
++	private boolean checkFields() {
++		if (tName.getText().length() == 0)
++		{
++			JOptionPane.showMessageDialog(this, &quot;A name for the task is mandatory!&quot;, &quot;Name needed!&quot;, JOptionPane.WARNING_MESSAGE);
++			return false;
++		}
++		return true;
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent e) {
++		Object obj = e.getSource();
++		if (obj.equals(bCancel))
++		{
++			setVisible(false);
++			closeOP = CANCEL;
++		}
++		else if (obj.equals(bOk))
++		{
++			if (dirty) {
++				if (checkFields())
++				{
++					Calendar schedule = Calendar.getInstance();
++					Calendar notification = Calendar.getInstance();
++					JSpinner.DateEditor editor;
++					SpinnerDateModel dModel;
++					SpinnerDateModel tModel;
++					Calendar dCal = Calendar.getInstance();
++					Calendar tCal = Calendar.getInstance();
++					
++					editor = (JSpinner.DateEditor)dSchedDateEditor.getEditor();
++					dModel = editor.getModel();
++					dCal.setTime(dModel.getDate());
++					editor = (JSpinner.DateEditor)dSchedTimeEditor.getEditor();
++					tModel = editor.getModel();
++					tCal.setTime(tModel.getDate());
++					schedule.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
++					
++					editor = (JSpinner.DateEditor)dNoteDateEditor.getEditor();
++					dModel = editor.getModel();
++					dCal.setTime(dModel.getDate());
++					editor = (JSpinner.DateEditor)dNoteTimeEditor.getEditor();
++					tModel = editor.getModel();
++					tCal.setTime(tModel.getDate());
++					notification.set(dCal.get(Calendar.YEAR), dCal.get(Calendar.MONTH), dCal.get(Calendar.DAY_OF_MONTH), tCal.get(Calendar.HOUR_OF_DAY), tCal.get(Calendar.MINUTE), 0);
++					
++					item = new ActionItem(tName.getText(), schedule, notification, new Integer(tDuration.getText()), new Integer(tNextNotfy.getText()), tDescription.getText());
++					setVisible(false);
++				}
++			}
++			else setVisible(false);
++			closeOP = OK;
++		}
++    }
++
++	// Listeners to detect modification of data
++	/* (non-Javadoc)
++	 * @see javax.swing.event.ChangeListener#stateChanged(javax.swing.event.ChangeEvent)
++	 */
++	public void stateChanged(ChangeEvent e) {
++		dirty = true;
++	}
++
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyPressed(java.awt.event.KeyEvent)
++	 */
++	public void keyPressed(KeyEvent e) {
++		
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyReleased(java.awt.event.KeyEvent)
++	 */
++	public void keyReleased(KeyEvent e) {
++		
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.KeyListener#keyTyped(java.awt.event.KeyEvent)
++	 */
++	public void keyTyped(KeyEvent e) {
++		dirty = true;
++	}
++}
++
+
+Copied: trunk/src/opentask/dialogs/NotifyDialog.java (from rev 35, trunk/src/opentask/NotifyDialog.java)
+===================================================================
+--- trunk/src/opentask/NotifyDialog.java	2008-02-07 14:56:28 UTC (rev 35)
++++ trunk/src/opentask/dialogs/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
+@@ -0,0 +1,105 @@
++/* 
++ * NotifyDialog.java
++ * OpenTask
++ *
++ * Copyright (C) 2007 Jochen A. Rassler
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ */
++package opentask.dialogs;
++
++import java.awt.Frame;
++import javax.swing.*;
++import java.awt.event.*;
++import java.util.Calendar;
++
++import opentask.data.*;
++
++/**
++ * @author rassler
++ *
++ */
++public class NotifyDialog extends JDialog implements ActionListener{
++	public static final long serialVersionUID = 1;
++	
++	private ActionItem item;
++	private ItemList itemList;
++	
++	JButton bDone;
++	JButton bLater;
++	
++	/**
++	 * @param owner
++	 * @param title
++	 * @param itm
++	 * @param list
++	 */
++	public NotifyDialog(Frame owner, String title, ActionItem itm, ItemList list, boolean remind) {
++		super(owner, title, true);
++		item = itm;
++		itemList = list;
++		setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
++
++		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
++		JLabel name = new JLabel(item.getItemName());
++		name.setAlignmentX(JLabel.LEFT_ALIGNMENT);
++		add(name);
++		JLabel date = new JLabel(item.getSchedule().getTime().toString());
++		add(date);
++		JTextArea description = new JTextArea(item.getDescription(), 5, 30);
++		description.setEditable(false);
++		add(description);
++		JSeparator separator = new JSeparator();
++		add(separator);
++		
++		JPanel pane = new JPanel();
++		pane.setLayout(new BoxLayout(pane, BoxLayout.X_AXIS));
++		bDone = new JButton(&quot;Done!&quot;);
++		bDone.addActionListener(this);
++		pane.add(bDone);
++		if (!remind)
++		{
++			bLater = new JButton(&quot;Remind me later again!&quot;);
++			bLater.addActionListener(this);
++			pane.add(bLater);
++		}
++		add(pane);
++		
++		pack();
++	}
++	
++	/* (non-Javadoc)
++	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
++	 */
++	public void actionPerformed(ActionEvent e) {
++		if (e.getSource().equals(bDone)) {
++			itemList.remove(item);
++			item.setNotified(true);
++			itemList.add(item);
++			// do nothing... wait for item to be invalid
++			setVisible(false);
++		}
++		else if (e.getSource().equals(bLater)){
++			itemList.remove(item);
++			Calendar cal = Calendar.getInstance();
++			// FIXME: use real delay value (currently only default delay is used)
++			cal.add(Calendar.MINUTE, ActionItem.DEFAULT_DELAY); 
++			item.setNotifyTime(cal);
++			item.setNotified(false);
++			itemList.add(item);
++			setVisible(false);
++		}
++	}
++}
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000012.html">[Opentask-devel] r37 - in trunk: . src/opentask src/opentask/dialogs
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#13">[ date ]</a>
+              <a href="thread.html#13">[ thread ]</a>
+              <a href="subject.html#13">[ subject ]</a>
+              <a href="author.html#13">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

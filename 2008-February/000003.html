@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Opentask-devel] r28 - in trunk/src/opentask: . data
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/opentask-devel/2008-February/index.html" >
+   <LINK REL="made" HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r28%20-%20in%20trunk/src/opentask%3A%20.%20data&In-Reply-To=%3C200802011735.m11HZxIl011210%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000004.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Opentask-devel] r28 - in trunk/src/opentask: . data</H1>
+    <B>j_a_r at BerliOS</B> 
+    <A HREF="mailto:opentask-devel%40lists.berlios.de?Subject=Re%3A%20%5BOpentask-devel%5D%20r28%20-%20in%20trunk/src/opentask%3A%20.%20data&In-Reply-To=%3C200802011735.m11HZxIl011210%40sheep.berlios.de%3E"
+       TITLE="[Opentask-devel] r28 - in trunk/src/opentask: . data">j_a_r at mail.berlios.de
+       </A><BR>
+    <I>Fri Feb  1 18:35:59 CET 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000004.html">[Opentask-devel] r29 - in trunk: . src/opentask
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3">[ date ]</a>
+              <a href="thread.html#3">[ thread ]</a>
+              <a href="subject.html#3">[ subject ]</a>
+              <a href="author.html#3">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: j_a_r
+Date: 2008-02-01 18:35:58 +0100 (Fri, 01 Feb 2008)
+New Revision: 28
+
+Added:
+   trunk/src/opentask/Environment.java
+Modified:
+   trunk/src/opentask/data/ItemList.java
+Log:
+implemented common environment class for OpenTask files
+
+Added: trunk/src/opentask/Environment.java
+===================================================================
+--- trunk/src/opentask/Environment.java	2008-01-31 11:01:43 UTC (rev 27)
++++ trunk/src/opentask/Environment.java	2008-02-01 17:35:58 UTC (rev 28)
+@@ -0,0 +1,20 @@
++/**
++ * 
++ */
++package opentask;
++
++/**
++ * @author rassler
++ *
++ */
++public class Environment {
++	private static String dataPath = System.getProperty(&quot;user.home&quot;);
++	private static String fileSeparator = System.getProperty(&quot;file.separator&quot;);
++	
++	private static String dataFile = &quot;opentask.dat&quot;;
++	
++	public static String getDataFile()
++	{
++		return dataPath + fileSeparator + dataFile;
++	}
++}
+
+
+Property changes on: trunk/src/opentask/Environment.java
+___________________________________________________________________
+Name: svn:eol-style
+   + native
+
+Modified: trunk/src/opentask/data/ItemList.java
+===================================================================
+--- trunk/src/opentask/data/ItemList.java	2008-01-31 11:01:43 UTC (rev 27)
++++ trunk/src/opentask/data/ItemList.java	2008-02-01 17:35:58 UTC (rev 28)
+@@ -21,6 +21,8 @@
+ 
+ package opentask.data;
+ 
++import opentask.Environment;
++
+ import java.util.*;
+ 
+ import java.io.*;
+@@ -33,7 +35,6 @@
+ public class ItemList {
+ 	private TreeSet&lt;ActionItem&gt; list;
+ 	private ItemListModel model;
+-	private final String fileName = System.getProperty(&quot;user.home&quot;) + System.getProperty(&quot;file.separator&quot;) + &quot;opentask.dat&quot;;
+ 	private final String SEPARATOR = &quot;#&quot;;
+ 	
+ 	/**
+@@ -180,10 +181,10 @@
+ 		BufferedWriter outputStream = null;
+ 		boolean success = true;
+ 		try {
+-			File file = new File(fileName);
++			File file = new File(Environment.getDataFile());
+ 			if (!file.exists())
+ 				file.createNewFile();
+-			outputStream = new BufferedWriter(new FileWriter(fileName));
++			outputStream = new BufferedWriter(new FileWriter(Environment.getDataFile()));
+ 			Iterator&lt;ActionItem&gt; it = iterator();
+ 			while (it.hasNext()) {
+ 				ActionItem item = it.next();
+@@ -216,7 +217,7 @@
+ 		BufferedReader inputStream = null;
+ 		boolean success = true;
+ 		try {
+-			inputStream = new BufferedReader(new FileReader(fileName));
++			inputStream = new BufferedReader(new FileReader(Environment.getDataFile()));
+ 			while (inputStream.ready()) {
+ 				String line = inputStream.readLine();
+ 				if (line.length() == 0) break; 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000004.html">[Opentask-devel] r29 - in trunk: . src/opentask
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#3">[ date ]</a>
+              <a href="thread.html#3">[ thread ]</a>
+              <a href="subject.html#3">[ subject ]</a>
+              <a href="author.html#3">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/opentask-devel">More information about the Opentask-devel
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,44 @@
+From j_a_r at mail.berlios.de  Fri Aug  1 14:59:40 2008
+From: j_a_r at mail.berlios.de (j_a_r at BerliOS)
+Date: Fri, 1 Aug 2008 14:59:40 +0200
+Subject: [Opentask-devel] r39 - in trunk: . src/opentask/dialogs
+Message-ID: <200808011259.m71Cxepi008554@sheep.berlios.de>
+
+Author: j_a_r
+Date: 2008-08-01 14:59:40 +0200 (Fri, 01 Aug 2008)
+New Revision: 39
+
+Modified:
+   trunk/changelog.txt
+   trunk/src/opentask/dialogs/NotifyDialog.java
+Log:
+notify dialog gets window manager order onTop on popup
+
+Modified: trunk/changelog.txt
+===================================================================
+--- trunk/changelog.txt	2008-02-08 13:49:46 UTC (rev 38)
++++ trunk/changelog.txt	2008-08-01 12:59:40 UTC (rev 39)
+@@ -1,6 +1,7 @@
+ 0.1.5
+ =====
+ * added about dialog
++* notify dialog gets window manager order onTop on popup 
+ 
+ 0.1.4
+ =====
+
+Modified: trunk/src/opentask/dialogs/NotifyDialog.java
+===================================================================
+--- trunk/src/opentask/dialogs/NotifyDialog.java	2008-02-08 13:49:46 UTC (rev 38)
++++ trunk/src/opentask/dialogs/NotifyDialog.java	2008-08-01 12:59:40 UTC (rev 39)
+@@ -78,6 +78,7 @@
+ 		add(pane);
+ 		
+ 		pack();
++		toFront();
+ 	}
+ 	
+ 	/* (non-Javadoc)
+
+
+
